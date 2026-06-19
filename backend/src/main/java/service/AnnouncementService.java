@@ -2,6 +2,7 @@ package service;
 
 import model.Announcement;
 import model.User;
+import model.NotificationType;
 import repository.AnnouncementRepository;
 import repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -16,10 +17,14 @@ public class AnnouncementService {
 
     private final AnnouncementRepository announcementRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public AnnouncementService(AnnouncementRepository announcementRepository, UserRepository userRepository) {
+    public AnnouncementService(AnnouncementRepository announcementRepository,
+                               UserRepository userRepository,
+                               NotificationService notificationService) {
         this.announcementRepository = announcementRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     public List<Announcement> getAnnouncementsForUser(User user) {
@@ -147,7 +152,23 @@ public class AnnouncementService {
         );
         announcement.setRecipients(resolvedRecipients);
 
-        return announcementRepository.save(announcement);
+        Announcement saved = announcementRepository.save(announcement);
+
+        if (saved.getRecipients() != null) {
+            for (Announcement.Recipient recipient : saved.getRecipients()) {
+                notificationService.createForUser(
+                        recipient.getUserId(),
+                        null,
+                        "New Announcement",
+                        saved.getTitle(),
+                        NotificationType.ANNOUNCEMENT_PUBLISHED,
+                        "ANNOUNCEMENT",
+                        saved.getId()
+                );
+            }
+        }
+
+        return saved;
     }
 
     public Announcement updateAnnouncement(String id, Announcement announcementData, User user) {

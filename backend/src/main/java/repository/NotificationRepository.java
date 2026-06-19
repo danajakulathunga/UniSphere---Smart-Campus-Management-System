@@ -12,6 +12,8 @@ public interface NotificationRepository extends MongoRepository<Notification, St
     long countByUserIdAndStatus(String userId, NotificationStatus status);
 
     void deleteAllByUserId(String userId);
+
+    boolean existsByUserIdAndTypeAndReferenceTypeAndReferenceIdAndMessage(String userId, model.NotificationType type, String referenceType, String referenceId, String message);
 }
 
 

@@ -841,7 +841,17 @@
   "month_11": "දෙසැ",
   "am": "පෙ.ව.",
   "pm": "ප.ව.",
-  "announcement_date_format": "{{year}} {{month}} {{day}} වෙනිදා, {{time}}"
+  "announcement_date_format": "{{year}} {{month}} {{day}} වෙනිදා, {{time}}",
+  "Welcome to UniSphere": "UniSphere වෙත සාදරයෙන් පිළිගනිමු",
+  "New Student Registered": "නව ශිෂ්‍යයෙකු ලියාපදිංචි විය",
+  "New Lecturer Added": "නව කථිකාචාර්යවරයෙකු එක් කරන ලදී",
+  "New Technician Added": "නව කාර්මික ශිල්පියෙකු එක් කරන ලදී",
+  "New Announcement": "නව නිවේදනයක්",
+  "msg_student_registered": "{{name}} ශිෂ්‍යයෙකු ලෙස UniSphere - ස්මාර්ට් විශ්වවිද්‍යාල කළමනාකරණ පද්ධතිය හා සම්බන්ධ වී ඇත.",
+  "msg_lecturer_added": "{{name}} කථිකාචාර්යවරයෙකු ලෙස UniSphere - ස්මාර්ට් විශ්වවිද්‍යාල කළමනාකරණ පද්ධතියට එක් කර ඇත.",
+  "msg_technician_added": "{{name}} කාර්මික ශිල්පියෙකු ලෙස UniSphere - ස්මාර්ට් විශ්වවිද්‍යාල කළමනාකරණ පද්ධතියට එක් කර ඇත.",
+  "msg_welcome_staff": "ඔබේ ගිණුම සාර්ථකව සාදන ලදී. කරුණාකර ඔබේ විද්‍යුත් තැපෑලට එවන ලද අක්තපත්‍ර භාවිතයෙන් ලොග් වන්න.",
+  "msg_booking_cancelled_simple": "{{resource}} සඳහා වන ඔබගේ වෙන්කරවා ගැනීම අවලංගු කර ඇත."
 }
 
 

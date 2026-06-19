@@ -841,5 +841,15 @@
   "month_11": "டிச",
   "am": "மு.ப",
   "pm": "பி.ப",
-  "announcement_date_format": "{{year}} {{month}} {{day}}, {{time}}"
+  "announcement_date_format": "{{year}} {{month}} {{day}}, {{time}}",
+  "Welcome to UniSphere": "UniSphere க்கு வரவேற்கிறோம்",
+  "New Student Registered": "புதிய மாணவர் பதிவு செய்யப்பட்டுள்ளார்",
+  "New Lecturer Added": "புதிய விரிவுரையாளர் சேர்க்கப்பட்டுள்ளார்",
+  "New Technician Added": "புதிய தொழில்நுட்பவியலாளர் சேர்க்கப்பட்டுள்ளார்",
+  "New Announcement": "புதிய அறிவிப்பு",
+  "msg_student_registered": "{{name}} UniSphere - ஸ்மார்ட் பல்கலைக்கழக மேலாண்மை அமைப்பில் மாணவராக இணைந்துள்ளார்.",
+  "msg_lecturer_added": "{{name}} UniSphere - ஸ்மார்ட் பல்கலைக்கழக மேலாண்மை அமைப்பில் விரிவுரையாளராக சேர்க்கப்பட்டுள்ளார்.",
+  "msg_technician_added": "{{name}} UniSphere - ஸ்மார்ட் பல்கலைக்கழக மேலாண்மை அமைப்பில் தொழில்நுட்பவியலாளராக சேர்க்கப்பட்டுள்ளார்.",
+  "msg_welcome_staff": "உங்கள் கணக்கு வெற்றிகரமாக உருவாக்கப்பட்டது. உங்கள் மின்னஞ்சலுக்கு அனுப்பப்பட்ட நற்சான்றிதழ்களைப் பயன்படுத்தி உள்நுழையவும்.",
+  "msg_booking_cancelled_simple": "{{resource}} க்கான உங்கள் முன்பதிவு ரத்து செய்யப்பட்டுள்ளது."
 }

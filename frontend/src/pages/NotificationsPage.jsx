@@ -50,6 +50,7 @@ const NotificationsPage = () => {
     },
     enabled: !!user,
     placeholderData: keepPreviousData,
+    refetchInterval: 2000,
   });
 
   const filteredNotifications = useMemo(() => {
@@ -196,6 +197,10 @@ const NotificationsPage = () => {
     }
   }, [highlightId, notifications]);
 
+  useEffect(() => {
+    refreshUnreadCount();
+  }, [notifications, refreshUnreadCount]);
+
   const handleNotificationClick = (item) => {
     if (!isRead(item)) {
       markRead(item.id);
@@ -208,6 +213,7 @@ const NotificationsPage = () => {
         TICKET: "/tickets",
         RESOURCE: "/resources",
         USER: "/users",
+        ANNOUNCEMENT: "/announcements",
       };
       
       const basePath = pathMap[item.referenceType];
@@ -236,9 +242,22 @@ const NotificationsPage = () => {
 
       // Explicit type handling with dynamic message parsing for translations
       if (type === "USER_REGISTERED") {
-        const match = message?.match(/A new student, (.+?), has registered and requires account validation\./);
-        if (match) {
-          displayMessage = t("msg_user_registered", { name: match[1], defaultValue: message });
+        const matchStudent = message?.match(/(.+?) has joined UniSphere - Smart University management System as a Student\./);
+        const matchLecturer = message?.match(/(.+?) has been added UniSphere - Smart University management System as a Lecturer\./);
+        const matchTechnician = message?.match(/(.+?) has been added UniSphere - Smart University management System as a Technician\./);
+        const matchWelcome = message?.match(/Your account has been created successfully\. Please log in using the credentials sent to your email\./);
+        const matchLegacy = message?.match(/A new student, (.+?), has registered and requires account validation\./);
+
+        if (matchStudent) {
+          displayMessage = t("msg_student_registered", { name: matchStudent[1], defaultValue: message });
+        } else if (matchLecturer) {
+          displayMessage = t("msg_lecturer_added", { name: matchLecturer[1], defaultValue: message });
+        } else if (matchTechnician) {
+          displayMessage = t("msg_technician_added", { name: matchTechnician[1], defaultValue: message });
+        } else if (matchWelcome) {
+          displayMessage = t("msg_welcome_staff", { defaultValue: message });
+        } else if (matchLegacy) {
+          displayMessage = t("msg_user_registered", { name: matchLegacy[1], defaultValue: message });
         }
       } else if (type === "TICKET_CREATED") {
         const match = message?.match(/(.+?) created a ticket in category (.+?)\./);
@@ -290,8 +309,11 @@ const NotificationsPage = () => {
         }
       } else if (type === "BOOKING_CANCELLED") {
         const match = message?.match(/Booking cancelled by (.+?) for (.+?) on (.+?) at (.+?)\./);
+        const matchSimple = message?.match(/Your booking for (.+?) has been cancelled\./);
         if (match) {
           displayMessage = t("msg_booking_cancelled", { name: match[1], resource: match[2], date: match[3], time: match[4], defaultValue: message });
+        } else if (matchSimple) {
+          displayMessage = t("msg_booking_cancelled_simple", { resource: matchSimple[1], defaultValue: message });
         }
       } else if (type === "LECTURE_SHARED") {
         const match = message?.match(/(.+?) is available for your batch/);
@@ -304,7 +326,7 @@ const NotificationsPage = () => {
           displayMessage = t("msg_lecture_updated", { purpose: match[1], defaultValue: message });
         }
       } else if (type === "LECTURE_CANCELLED") {
-        const match = message?.match(/(.+?) has been canceled/);
+        const match = message?.match(/(.+?) Lecture \((.+?)\) has been canceled/);
         if (match) {
           displayMessage = t("msg_lecture_cancelled", { purpose: match[1], defaultValue: message });
         }
@@ -317,29 +339,85 @@ const NotificationsPage = () => {
         if (message?.includes("barcode match failed")) {
           displayMessage = t("msg_attendance_match_error", { defaultValue: message });
         }
+      } else if (type === "ANNOUNCEMENT_PUBLISHED") {
+        displayMessage = message;
       }
       // Role-Based Message Enhancement Fallbacks (if type was not explicitly handled above)
       else if (primaryRole === "USER" || primaryRole === "LECTURER") {
         if (title?.includes("New incident") || title?.includes("Ticket created")) {
-          displayMessage = t("msg_ticket_created", { defaultValue: message });
+          const match = message?.match(/(.+?) created a ticket in category (.+?)\./);
+          if (match) {
+            displayMessage = t("msg_ticket_created", { name: match[1], category: match[2], defaultValue: message });
+          } else {
+            displayMessage = message;
+          }
         } else if (title?.includes("status") || title?.includes("update")) {
-          displayMessage = t("msg_ticket_updated", { defaultValue: message });
+          const matchAdmin = message?.match(/Ticket #(.+?) was updated to (.+?) by (.+?)\./);
+          const matchUser = message?.match(/Ticket #(.+?) status changed to (.+?)\./);
+          const matchCancel = message?.match(/(.+?) cancelled ticket #(.+?)\./);
+          const matchUpdate = message?.match(/Ticket #(.+?) was updated by (.+?)\./);
+          
+          if (matchAdmin) {
+            const statusKey = matchAdmin[2].toLowerCase().replace(" ", "_");
+            displayMessage = t("msg_admin_status_updated", { id: matchAdmin[1], status: t(statusKey), name: matchAdmin[3], defaultValue: message });
+          } else if (matchUser) {
+            const statusKey = matchUser[2].toLowerCase().replace(" ", "_");
+            displayMessage = t("msg_ticket_status_changed", { id: matchUser[1], status: t(statusKey), defaultValue: message });
+          } else if (matchCancel) {
+            displayMessage = t("msg_ticket_cancelled", { name: matchCancel[1], id: matchCancel[2], defaultValue: message });
+          } else if (matchUpdate) {
+            displayMessage = t("msg_ticket_updated", { id: matchUpdate[1], name: matchUpdate[2], defaultValue: message });
+          } else {
+            displayMessage = message;
+          }
         } else if (title?.toLowerCase().includes("lecture") || title?.toLowerCase().includes("materials")) {
-          displayMessage = t("msg_lecture_materials", { defaultValue: message });
+          displayMessage = message;
         } else if (title?.includes("booking") || title?.includes("reservation")) {
-          displayMessage = t("msg_booking_confirmed", { defaultValue: message });
+          const matchApprove = message?.match(/Your booking for (.+?) has been approved\./);
+          const matchReject = message?.match(/Your booking for (.+?) was rejected\. Reason: (.+)/);
+          const matchCancel = message?.match(/Booking cancelled by (.+?) for (.+?) on (.+?) at (.+?)\./);
+          if (matchApprove) {
+            displayMessage = t("msg_booking_confirmed", { resource: matchApprove[1], defaultValue: message });
+          } else if (matchReject) {
+            displayMessage = t("msg_booking_rejected", { resource: matchReject[1], reason: matchReject[2], defaultValue: message });
+          } else if (matchCancel) {
+            displayMessage = t("msg_booking_cancelled", { name: matchCancel[1], resource: matchCancel[2], date: matchCancel[3], time: matchCancel[4], defaultValue: message });
+          } else {
+            displayMessage = message;
+          }
         }
       } else if (primaryRole === "ADMIN") {
         if (title?.includes("New incident")) {
-          displayMessage = t("msg_admin_new_ticket", { defaultValue: message });
+          const match = message?.match(/(.+?) created a ticket in category (.+?)\./);
+          if (match) {
+            displayMessage = t("msg_admin_new_ticket", { name: match[1], category: match[2], defaultValue: message });
+          } else {
+            displayMessage = message;
+          }
         } else if (title?.includes("updated") || title?.includes("status")) {
-          displayMessage = t("msg_admin_status_updated", { defaultValue: message });
+          const matchAdmin = message?.match(/Ticket #(.+?) was updated to (.+?) by (.+?)\./);
+          if (matchAdmin) {
+            const statusKey = matchAdmin[2].toLowerCase().replace(" ", "_");
+            displayMessage = t("msg_admin_status_updated", { id: matchAdmin[1], status: t(statusKey), name: matchAdmin[3], defaultValue: message });
+          } else {
+            displayMessage = message;
+          }
         }
       } else if (primaryRole === "TECHNICIAN") {
         if (title?.includes("assigned")) {
-          displayMessage = t("msg_tech_ticket_assigned", { defaultValue: message });
+          const match = message?.match(/You have been assigned ticket #(.+?)\./);
+          if (match) {
+            displayMessage = t("msg_tech_ticket_assigned", { id: match[1], defaultValue: message });
+          } else {
+            displayMessage = message;
+          }
         } else if (title?.includes("comment") || title?.includes("message")) {
-          displayMessage = t("msg_tech_new_comment", { defaultValue: message });
+          const match = message?.match(/(.+?) commented on ticket #(.+?)\./);
+          if (match) {
+            displayMessage = t("msg_tech_new_comment", { name: match[1], id: match[2], defaultValue: message });
+          } else {
+            displayMessage = message;
+          }
         }
       }
 

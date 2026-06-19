@@ -841,7 +841,17 @@
   "month_11": "Dec",
   "am": "AM",
   "pm": "PM",
-  "announcement_date_format": "{{month}} {{day}}, {{year}}, {{time}}"
+  "announcement_date_format": "{{month}} {{day}}, {{year}}, {{time}}",
+  "Welcome to UniSphere": "Welcome to UniSphere",
+  "New Student Registered": "New Student Registered",
+  "New Lecturer Added": "New Lecturer Added",
+  "New Technician Added": "New Technician Added",
+  "New Announcement": "New Announcement",
+  "msg_student_registered": "{{name}} has joined UniSphere - Smart University management System as a Student.",
+  "msg_lecturer_added": "{{name}} has been added UniSphere - Smart University management System as a Lecturer.",
+  "msg_technician_added": "{{name}} has been added UniSphere - Smart University management System as a Technician.",
+  "msg_welcome_staff": "Your account has been created successfully. Please log in using the credentials sent to your email.",
+  "msg_booking_cancelled_simple": "Your booking for {{resource}} has been cancelled."
 }
 
 
