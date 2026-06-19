@@ -775,7 +775,7 @@ const Sidebar = ({
                                   <div
                                     className={`absolute -right-1.5 -top-1.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-black text-white ring-2 ring-[#0892d0] transition-opacity duration-200 delay-100 ${isCollapsed ? "opacity-100" : "opacity-0 pointer-events-none"}`}
                                   >
-                                    {unreadCount > 9 ? "9+" : unreadCount}
+                                    {unreadCount}
                                   </div>
                                 )}
                               {item.key === "announcements" &&
@@ -801,7 +801,7 @@ const Sidebar = ({
                                 <div
                                   className={`absolute right-1 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-black text-white shadow-lg transition-opacity duration-200 delay-100 ${isCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"}`}
                                 >
-                                  {unreadCount > 9 ? "9+" : unreadCount}
+                                  {unreadCount}
                                 </div>
                               )}
                             {item.key === "announcements" &&

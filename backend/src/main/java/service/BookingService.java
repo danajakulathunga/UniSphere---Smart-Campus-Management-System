@@ -428,6 +428,18 @@ public class BookingService {
         Booking saved = bookingRepository.save(booking);
         logger.info("Booking cancelled: {}", saved.getId());
 
+        // Notify owner if booking was cancelled by someone else (e.g. Admin)
+        if (!owner) {
+            notificationService.createForUser(
+                    booking.getUserId(),
+                    null,
+                    "Booking Cancelled",
+                    "Your booking for " + booking.getResourceName() + " has been cancelled.",
+                    NotificationType.BOOKING_CANCELLED,
+                    "BOOKING",
+                    booking.getId());
+        }
+
         // Notify Students if it was shared
         if (booking.getAssignedBatch() != null) {
             notificationService.createForBatch(

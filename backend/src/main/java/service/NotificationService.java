@@ -32,6 +32,7 @@ public class NotificationService {
         this.userRepository = userRepository;
     }
 
+
     public Notification createForUser(String userId,
                                       Role recipientRole,
                                       String title,
@@ -39,6 +40,25 @@ public class NotificationService {
                                       NotificationType type,
                                       String referenceType,
                                       String referenceId) {
+        LocalDateTime createdAt = LocalDateTime.now();
+
+        // 13. DATABASE VALIDATION
+        if (userId == null || userId.trim().isEmpty() ||
+            title == null || title.trim().isEmpty() ||
+            message == null || message.trim().isEmpty() ||
+            type == null || createdAt == null) {
+            logger.error("Database validation failed for notification: userId={}, title={}, message={}, type={}, createdAt={}", 
+                         userId, title, message, type, createdAt);
+            return null;
+        }
+
+        // 12. DUPLICATE NOTIFICATION PREVENTION
+        if (notificationRepository.existsByUserIdAndTypeAndReferenceTypeAndReferenceIdAndMessage(userId, type, referenceType, referenceId, message)) {
+            logger.warn("Duplicate notification creation blocked: userId={}, type={}, referenceId={}, message={}", 
+                        userId, type, referenceId, message);
+            return null;
+        }
+
         // Strict Preference Enforcement
         User user = userRepository.findById(userId).orElse(null);
         if (user != null) {
@@ -51,7 +71,10 @@ public class NotificationService {
                     boolean isBookingType = type.name().startsWith("BOOKING");
                     boolean isTicketType = type.name().startsWith("TICKET");
                     boolean isLectureType = type.name().startsWith("LECTURE");
-                    boolean isSystemType = type == NotificationType.USER_REGISTERED;
+                    boolean isSystemType = type == NotificationType.USER_REGISTERED ||
+                                           type == NotificationType.ANNOUNCEMENT_PUBLISHED ||
+                                           type == NotificationType.STUDENT_BATCH_MATCH ||
+                                           type == NotificationType.ATTENDANCE_SUBMITTED;
                     
                     if (isBookingType && !settings.isBooking()) return null;
                     if (isTicketType && !settings.isTicket()) return null;
@@ -71,7 +94,7 @@ public class NotificationService {
         notification.setReferenceType(referenceType);
         notification.setReferenceId(referenceId);
         notification.setRead(false);
-        notification.setCreatedAt(LocalDateTime.now());
+        notification.setCreatedAt(createdAt);
         Notification saved = notificationRepository.save(notification);
         logger.info("Notification created and saved: id={}, type={}, userId={}", saved.getId(), saved.getType(), saved.getUserId());
         return saved;

@@ -264,6 +264,15 @@ public class TicketService {
             "TICKET",
             ticket.getId());
 
+        notificationService.createForUser(
+            ticket.getUserId(),
+            null,
+            "Ticket assigned",
+            "Ticket #" + ticket.getId() + " was assigned to " + technician.getName() + ".",
+            NotificationType.TICKET_ASSIGNED,
+            "TICKET",
+            ticket.getId());
+
         return saved;
     }
 

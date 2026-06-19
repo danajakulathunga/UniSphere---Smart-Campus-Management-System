@@ -108,8 +108,8 @@ public class AuthService {
 
         userRepository.save(user);
         
-        String notificationMessage = String.format("A new %s, %s, has joined the system.", role.name().toLowerCase(), user.getName());
-        notificationService.createForRole(Role.ADMIN, "New Registration", notificationMessage, NotificationType.USER_REGISTERED, "USER", user.getId(), Set.of());
+        String notificationMessage = user.getName() + " has joined UniSphere - Smart University management System as a Student.";
+        notificationService.createForRole(Role.ADMIN, "New Student Registered", notificationMessage, NotificationType.USER_REGISTERED, "USER", user.getId(), Set.of());
     }
 
     public void createStaffAccount(StaffCreateRequest request) {
@@ -152,6 +152,26 @@ public class AuthService {
         user.setEnabled(true);
 
         userRepository.save(user);
+
+        // Generate notifications for staff creation
+        if (role == Role.LECTURER) {
+            String adminMsg = user.getName() + " has been added UniSphere - Smart University management System as a Lecturer.";
+            notificationService.createForRole(Role.ADMIN, "New Lecturer Added", adminMsg, NotificationType.USER_REGISTERED, "USER", user.getId(), Set.of());
+        } else if (role == Role.TECHNICIAN) {
+            String adminMsg = user.getName() + " has been added UniSphere - Smart University management System as a Technician.";
+            notificationService.createForRole(Role.ADMIN, "New Technician Added", adminMsg, NotificationType.USER_REGISTERED, "USER", user.getId(), Set.of());
+        }
+
+        // Welcome notification for the staff member
+        notificationService.createForUser(
+            user.getId(),
+            role,
+            "Welcome to UniSphere",
+            "Your account has been created successfully. Please log in using the credentials sent to your email.",
+            NotificationType.USER_REGISTERED,
+            "USER",
+            user.getId()
+        );
 
         // Send email notification
         emailService.sendStaffAccountCreatedEmail(

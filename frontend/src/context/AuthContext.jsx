@@ -197,10 +197,15 @@ export const AuthProvider = ({ children }) => {
         const isBooking = type.startsWith("BOOKING");
         const isTicket = type.startsWith("TICKET");
         const isLecture = type.startsWith("LECTURE");
+        const isSystem = type === "USER_REGISTERED" ||
+                         type === "ANNOUNCEMENT_PUBLISHED" ||
+                         type === "STUDENT_BATCH_MATCH" ||
+                         type === "ATTENDANCE_SUBMITTED";
 
         if (isBooking) return settings.booking;
         if (isTicket) return settings.ticket;
         if (isLecture) return settings.lecture;
+        if (isSystem) return true;
         return false; // Block others if All is OFF
       });
 
@@ -266,8 +271,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       refreshUnreadCount();
-      // Optional: Poll for notifications every 2 minutes
-      const interval = setInterval(refreshUnreadCount, 120000);
+      // Poll for notifications every 2 seconds for instant updates
+      const interval = setInterval(refreshUnreadCount, 2000);
       return () => clearInterval(interval);
     }
   }, [token, refreshUnreadCount]);
