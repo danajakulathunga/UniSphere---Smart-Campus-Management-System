@@ -860,7 +860,10 @@
   "msg_booking_updated_admin": "{{userName}} විසින් {{bookingReference}} වෙන්කිරීම යාවත්කාලීන කර ඇත. කරුණාකර යාවත්කාලීන කළ ඉල්ලීම අනුමත කිරීම හෝ ප්රතික්ෂේප කිරීම සඳහා සමාලෝචනය කරන්න.",
   "msg_booking_cancelled_admin": "{{userName}} විසින් {{bookingReference}} වෙන්කිරීම අවලංගු කර ඇත.",
   "msg_booking_approved_updated": "ඔබගේ යාවත්කාලීන කළ {{bookingReference}} වෙන්කිරීම අනුමත කර ඇත.",
-  "msg_booking_rejected_updated": "ඔබගේ යාවත්කාලීන කළ {{bookingReference}} වෙන්කිරීම ප්රතික්ෂේප කර ඇත."
+  "msg_booking_rejected_updated": "ඔබගේ යාවත්කාලීන කළ {{bookingReference}} වෙන්කිරීම ප්රතික්ෂේප කර ඇත.",
+  "first_time_profile_alert_title": "UniSphere වෙත සාදරයෙන් පිළිගනිමු",
+  "first_time_profile_alert_msg": "පද්ධතිය භාවිතා කිරීමට පෙර, කරුණාකර ඔබගේ අධ්යයන තොරතුරු සහ අවශ්ය අනෙකුත් විස්තර ඇතුළත් කර ඔබගේ පැතිකඩ සම්පූර්ණ කරන්න. එවිට දේශන, කාලසටහන් සහ අනෙකුත් අධ්යයන සේවාවන් නිවැරදිව ලබා ගත හැක.",
+  "first_time_profile_alert_btn": "ඉදිරියට යන්න"
 }
 
 

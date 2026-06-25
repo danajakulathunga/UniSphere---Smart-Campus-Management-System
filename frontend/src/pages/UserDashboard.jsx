@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { BellRing, CalendarCheck2, LayoutGrid, Wrench, ArrowRight, Clock, MapPin, ChevronRight, Activity, CheckCircle2, AlertCircle, Calendar, TrendingUp, Star, User as UserIcon } from "lucide-react";
+import { BellRing, CalendarCheck2, LayoutGrid, Wrench, ArrowRight, Clock, MapPin, ChevronRight, Activity, CheckCircle2, AlertCircle, Calendar, TrendingUp, Star, User as UserIcon, Building2, GraduationCap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, normalizeRoles } from "../context/AuthContext";
 import { useSearch } from "../context/SearchContext";
 import DashboardLayout from "../components/DashboardLayout";
 import api from "../services/api";
 import { getRoleAccent, getSidebarItems } from "../utils/dashboardConfig";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { DashboardSkeleton } from "../components/Skeleton";
+import Modal from "../components/Modal";
 import AnimatedProgressBar from "../components/AnimatedProgressBar";
 import CountdownTimer from "../components/CountdownTimer";
 import LectureSessionCard from "../components/LectureSessionCard";
@@ -36,6 +37,29 @@ const UserDashboard = () => {
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [calendarRange, setCalendarRange] = useState({ startDate: "", endDate: "" });
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  const isStudent = useMemo(() => {
+    return user && normalizeRoles(user.roles).includes("USER");
+  }, [user]);
+
+  const isProfileComplete = useMemo(() => {
+    if (!isStudent) return true;
+    return !!(
+      user?.year &&
+      user?.semester &&
+      user?.faculty &&
+      user.year.trim() !== "" &&
+      user.semester.trim() !== "" &&
+      user.faculty.trim() !== ""
+    );
+  }, [user, isStudent]);
+
+  useEffect(() => {
+    if (isStudent && !isProfileComplete) {
+      setIsProfileModalOpen(true);
+    }
+  }, [isStudent, isProfileComplete]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -79,7 +103,7 @@ const UserDashboard = () => {
       });
       return res.data || [];
     },
-    enabled: !!user && !!calendarRange.startDate && !!calendarRange.endDate,
+    enabled: !!user && !!calendarRange.startDate && !!calendarRange.endDate && isProfileComplete,
     refetchInterval: 5000,
   });
 
@@ -122,7 +146,7 @@ const UserDashboard = () => {
       });
       return res.data || [];
     },
-    enabled: !!user,
+    enabled: !!user && isProfileComplete,
   });
 
   const topSessions = useMemo(() => {
@@ -515,6 +539,32 @@ const UserDashboard = () => {
           </div>
         </div>
       </section>
+
+      <Modal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        title={t("first_time_profile_alert_title")}
+        maxWidth="max-w-md"
+        cornerClose={false}
+        showCloseButton={false}
+      >
+        <div className="flex flex-col items-center text-center p-1 sm:p-2">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white mb-6 shadow-lg shadow-indigo-500/25 transform hover:scale-105 transition-all duration-300">
+            <GraduationCap className="h-8 w-8" />
+          </div>
+          
+          <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed mb-6 px-1">
+            {t("first_time_profile_alert_msg")}
+          </p>
+
+          <button
+            onClick={() => setIsProfileModalOpen(false)}
+            className="w-full inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-xs font-black text-white transition-all hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-600/25 active:scale-95"
+          >
+            {t("first_time_profile_alert_btn")}
+          </button>
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 };

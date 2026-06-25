@@ -89,6 +89,17 @@ const MyLecturesPage = () => {
   const [ratingValue, setRatingValue] = useState(0);
 
   const isUser = roles.includes("USER");
+  const isProfileComplete = useMemo(() => {
+    if (!isUser) return true;
+    return !!(
+      user?.year &&
+      user?.semester &&
+      user?.faculty &&
+      user.year.trim() !== "" &&
+      user.semester.trim() !== "" &&
+      user.faculty.trim() !== ""
+    );
+  }, [user, isUser]);
   const queryClient = useQueryClient();
 
   const { data: sessions = [], isLoading, refetch } = useQuery({
@@ -102,7 +113,7 @@ const MyLecturesPage = () => {
       });
       return res.data || [];
     },
-    enabled: !!user,
+    enabled: !!user && isProfileComplete,
     refetchInterval: 5000,
   });
 
@@ -112,7 +123,7 @@ const MyLecturesPage = () => {
       const res = await api.get("/attendance/my-attendance");
       return res.data || [];
     },
-    enabled: !!user && isUser,
+    enabled: !!user && isUser && isProfileComplete,
     refetchInterval: 5000,
   });
 

@@ -860,7 +860,10 @@
   "msg_booking_updated_admin": "{{userName}} updated booking {{bookingReference}}. Review and approve or reject the updated request.",
   "msg_booking_cancelled_admin": "{{userName}} cancelled booking {{bookingReference}}.",
   "msg_booking_approved_updated": "Your updated booking {{bookingReference}} has been approved.",
-  "msg_booking_rejected_updated": "Your updated booking {{bookingReference}} has been rejected."
+  "msg_booking_rejected_updated": "Your updated booking {{bookingReference}} has been rejected.",
+  "first_time_profile_alert_title": "Welcome to UniSphere",
+  "first_time_profile_alert_msg": "Before using the system, please complete your profile by providing your academic information and other required details. This helps us personalize your experience and provide access to lectures, schedules, and other academic services.",
+  "first_time_profile_alert_btn": "Continue"
 }
 
 

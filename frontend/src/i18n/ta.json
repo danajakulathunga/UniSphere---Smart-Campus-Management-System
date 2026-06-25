@@ -860,5 +860,8 @@
   "msg_booking_updated_admin": "{{userName}} {{bookingReference}} முன்பதிவை புதுப்பித்துள்ளார். புதுப்பிக்கப்பட்ட கோரிக்கையை மதிப்பாய்வு செய்து ஒப்புதல் அல்லது நிராகரிப்பு செய்யவும்.",
   "msg_booking_cancelled_admin": "{{userName}} {{bookingReference}} முன்பதிவை ரத்து செய்துள்ளார்.",
   "msg_booking_approved_updated": "உங்கள் புதுப்பிக்கப்பட்ட {{bookingReference}} முன்பதிவு ஒப்புதல் பெற்றுள்ளது.",
-  "msg_booking_rejected_updated": "உங்கள் புதுப்பிக்கப்பட்ட {{bookingReference}} முன்பதிவு நிராகரிக்கப்பட்டுள்ளது."
+  "msg_booking_rejected_updated": "உங்கள் புதுப்பிக்கப்பட்ட {{bookingReference}} முன்பதிவு நிராகரிக்கப்பட்டுள்ளது.",
+  "first_time_profile_alert_title": "UniSphere-க்கு வரவேற்கிறோம்",
+  "first_time_profile_alert_msg": "கணினியை பயன்படுத்துவதற்கு முன், உங்கள் கல்வி தகவல்களையும் தேவையான பிற விவரங்களையும் வழங்கி உங்கள் சுயவிவரத்தை பூர்த்தி செய்யவும். இதன் மூலம் விரிவுரைகள், அட்டவணைகள் மற்றும் கல்விசார் சேவைகளை சரியாகப் பெற முடியும்.",
+  "first_time_profile_alert_btn": "தொடரவும்"
 }
