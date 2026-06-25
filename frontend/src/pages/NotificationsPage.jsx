@@ -268,7 +268,8 @@ const NotificationsPage = () => {
       // Format Reference Context
       if (referenceType && referenceId) {
         const shortId = referenceId.substring(0, 8).toUpperCase();
-        contextLine = `${referenceType} • #${shortId}`;
+        const displayRefType = referenceType === "USER" ? t("STUDENT", { defaultValue: "STUDENT" }) : referenceType;
+        contextLine = `${displayRefType} • #${shortId}`;
       }
 
       // Explicit type handling with dynamic message parsing for translations
@@ -329,22 +330,38 @@ const NotificationsPage = () => {
           displayMessage = t("msg_booking_created", { name: match[1], resource: match[2], defaultValue: message });
         }
       } else if (type === "BOOKING_APPROVED") {
+        const matchUpdated = message?.match(/Your updated booking (.+?) has been approved\./);
         const match = message?.match(/Your booking for (.+?) has been approved\./);
-        if (match) {
+        if (matchUpdated) {
+          displayMessage = t("msg_booking_approved_updated", { bookingReference: matchUpdated[1], defaultValue: message });
+        } else if (match) {
           displayMessage = t("msg_booking_confirmed", { resource: match[1], defaultValue: message });
         }
       } else if (type === "BOOKING_REJECTED") {
+        const matchUpdated = message?.match(/Your updated booking (.+?) has been rejected\./);
         const match = message?.match(/Your booking for (.+?) was rejected\. Reason: (.+)/);
-        if (match) {
+        if (matchUpdated) {
+          displayMessage = t("msg_booking_rejected_updated", { bookingReference: matchUpdated[1], defaultValue: message });
+        } else if (match) {
           displayMessage = t("msg_booking_rejected", { resource: match[1], reason: match[2], defaultValue: message });
         }
       } else if (type === "BOOKING_CANCELLED") {
-        const match = message?.match(/Booking cancelled by (.+?) for (.+?) on (.+?) at (.+?)\./);
-        const matchSimple = message?.match(/Your booking for (.+?) has been cancelled\./);
+        const matchAdmin = message?.match(/(.+?) cancelled booking (.+?)\./);
+        if (matchAdmin) {
+          displayMessage = t("msg_booking_cancelled_admin", { userName: matchAdmin[1], bookingReference: matchAdmin[2], defaultValue: message });
+        } else {
+          const match = message?.match(/Booking cancelled by (.+?) for (.+?) on (.+?) at (.+?)\./);
+          const matchSimple = message?.match(/Your booking for (.+?) has been cancelled\./);
+          if (match) {
+            displayMessage = t("msg_booking_cancelled", { name: match[1], resource: match[2], date: match[3], time: match[4], defaultValue: message });
+          } else if (matchSimple) {
+            displayMessage = t("msg_booking_cancelled_simple", { resource: matchSimple[1], defaultValue: message });
+          }
+        }
+      } else if (type === "BOOKING_UPDATED") {
+        const match = message?.match(/(.+?) updated booking (.+?)\. Review and approve or reject the updated request\./);
         if (match) {
-          displayMessage = t("msg_booking_cancelled", { name: match[1], resource: match[2], date: match[3], time: match[4], defaultValue: message });
-        } else if (matchSimple) {
-          displayMessage = t("msg_booking_cancelled_simple", { resource: matchSimple[1], defaultValue: message });
+          displayMessage = t("msg_booking_updated_admin", { userName: match[1], bookingReference: match[2], defaultValue: message });
         }
       } else if (type === "LECTURE_SHARED" || type === "LECTURE_UPDATED") {
         const matchDoc = message?.match(/^Lecturer (.+?) shared a lecture session (.+?) scheduled on \*\*(.+?)\*\* at \*\*(.+?)\*\* in \*\*(.+?)\*\*\. The \*\*(.+?)\*\* was attached\.$/);

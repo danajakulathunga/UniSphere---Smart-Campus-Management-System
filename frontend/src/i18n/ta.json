@@ -854,5 +854,11 @@
   "msg_booking_cancelled_simple": "{{resource}} க்கான உங்கள் முன்பதிவு ரத்து செய்யப்பட்டுள்ளது.",
   "msg_lecture_shared_enhanced": "விரிவுரையாளர் {{lecturerName}} அவர்கள் **{{date}}** அன்று **{{time}}** மணிக்கு **{{location}}** இல் திட்டமிடப்பட்டுள்ள {{lectureName}} விரிவுரை அமர்வைப் பகிர்ந்துள்ளார்.",
   "msg_lecture_shared_doc_enhanced": "விரிவுரையாளர் {{lecturerName}} அவர்கள் **{{date}}** அன்று **{{time}}** மணிக்கு **{{location}}** இல் திட்டமிடப்பட்டுள்ள {{lectureName}} விரிவுரை அமர்வைப் பகிர்ந்துள்ளார். **{{documentName}}** இணைக்கப்பட்டுள்ளது.",
-  "msg_attendance_submitted_enhanced": "{{studentName}} அவர்கள் {{date}} அன்று {{time}} மணிக்கு திட்டமிடப்பட்டுள்ள {{lectureName}} விரிவுரை அமர்விற்கான வருகையைப் பதிவு செய்துள்ளார்."
+  "msg_attendance_submitted_enhanced": "{{studentName}} அவர்கள் {{date}} அன்று {{time}} மணிக்கு திட்டமிடப்பட்டுள்ள {{lectureName}} விரிவுரை அமர்விற்கான வருகையைப் பதிவு செய்துள்ளார்.",
+  "Booking Cancelled": "முன்பதிவு ரத்து செய்யப்பட்டது",
+  "Booking Updated": "முன்பதிவு புதுப்பிக்கப்பட்டது",
+  "msg_booking_updated_admin": "{{userName}} {{bookingReference}} முன்பதிவை புதுப்பித்துள்ளார். புதுப்பிக்கப்பட்ட கோரிக்கையை மதிப்பாய்வு செய்து ஒப்புதல் அல்லது நிராகரிப்பு செய்யவும்.",
+  "msg_booking_cancelled_admin": "{{userName}} {{bookingReference}} முன்பதிவை ரத்து செய்துள்ளார்.",
+  "msg_booking_approved_updated": "உங்கள் புதுப்பிக்கப்பட்ட {{bookingReference}} முன்பதிவு ஒப்புதல் பெற்றுள்ளது.",
+  "msg_booking_rejected_updated": "உங்கள் புதுப்பிக்கப்பட்ட {{bookingReference}} முன்பதிவு நிராகரிக்கப்பட்டுள்ளது."
 }

@@ -157,12 +157,9 @@ public class BookingService {
                     id);
         }
 
-        // Only reset to PENDING if it wasn't already APPROVED
-        if (booking.getStatus() != BookingStatus.APPROVED) {
-            booking.setStatus(BookingStatus.PENDING);
-            // Update "Submitted" timestamp to current time for new submissions
-            booking.setCreatedAt(LocalDateTime.now());
-        }
+        // Always reset status to PENDING on update
+        booking.setStatus(BookingStatus.PENDING);
+        booking.setCreatedAt(LocalDateTime.now());
 
         // Check if it's a share or update for students
         boolean isNewlyShared = booking.getAssignedBatch() == null && request.getAssignedBatch() != null;
@@ -178,9 +175,7 @@ public class BookingService {
         booking.setAssignedBatch(request.getAssignedBatch());
         booking.setSessionDetails(request.getSessionDetails());
         booking.setCapacity(request.getCapacity());
-        if (isBatchUpdate) {
-            booking.setIsUpdated(true);
-        }
+        booking.setIsUpdated(true);
         if (booking.getQrCode() == null) {
             booking.setQrCode(java.util.UUID.randomUUID().toString());
         }
@@ -270,16 +265,14 @@ public class BookingService {
             System.out.println("Notification created for batch: " + saved.getAssignedBatch() + " (Booking: "
                     + saved.getId() + ")");
         }
-
-        // Notify Admin about the update/re-submission as a new request for approval
+        // Notify Admin about the booking update
         notificationService.createForRole(
                 Role.ADMIN,
-                "Booking Re-submission",
-                user.getName() + " has updated their reservation for " + booking.getResourceName() +
-                        ". This requires your re-approval.",
-                NotificationType.BOOKING_CREATED,
+                "Booking Updated",
+                user.getName() + " updated booking " + saved.getId() + ". Review and approve or reject the updated request.",
+                NotificationType.BOOKING_UPDATED,
                 "BOOKING",
-                booking.getId(),
+                saved.getId(),
                 java.util.Set.of(user.getId()));
 
         return saved;
@@ -417,14 +410,25 @@ public class BookingService {
         booking.setDecisionReason(reason);
         Booking saved = bookingRepository.save(booking);
 
-        notificationService.createForUser(
-                booking.getUserId(),
-                null, // Role is determined by the user's role in createForUser if needed
-                "Booking approved",
-                "Your booking for " + booking.getResourceName() + " has been approved.",
-                NotificationType.BOOKING_APPROVED,
-                "BOOKING",
-                booking.getId());
+        if (Boolean.TRUE.equals(booking.getIsUpdated())) {
+            notificationService.createForUser(
+                    booking.getUserId(),
+                    null,
+                    "Booking Approved",
+                    "Your updated booking " + booking.getId() + " has been approved.",
+                    NotificationType.BOOKING_APPROVED,
+                    "BOOKING",
+                    booking.getId());
+        } else {
+            notificationService.createForUser(
+                    booking.getUserId(),
+                    null, // Role is determined by the user's role in createForUser if needed
+                    "Booking approved",
+                    "Your booking for " + booking.getResourceName() + " has been approved.",
+                    NotificationType.BOOKING_APPROVED,
+                    "BOOKING",
+                    booking.getId());
+        }
 
         return saved;
     }
@@ -437,14 +441,25 @@ public class BookingService {
         booking.setDecisionReason(reason);
         Booking saved = bookingRepository.save(booking);
 
-        notificationService.createForUser(
-                booking.getUserId(),
-                null,
-                "Booking rejected",
-                "Your booking for " + booking.getResourceName() + " was rejected. Reason: " + reason,
-                NotificationType.BOOKING_REJECTED,
-                "BOOKING",
-                booking.getId());
+        if (Boolean.TRUE.equals(booking.getIsUpdated())) {
+            notificationService.createForUser(
+                    booking.getUserId(),
+                    null,
+                    "Booking Rejected",
+                    "Your updated booking " + booking.getId() + " has been rejected.",
+                    NotificationType.BOOKING_REJECTED,
+                    "BOOKING",
+                    booking.getId());
+        } else {
+            notificationService.createForUser(
+                    booking.getUserId(),
+                    null,
+                    "Booking rejected",
+                    "Your booking for " + booking.getResourceName() + " was rejected. Reason: " + reason,
+                    NotificationType.BOOKING_REJECTED,
+                    "BOOKING",
+                    booking.getId());
+        }
 
         return saved;
     }
@@ -495,9 +510,8 @@ public class BookingService {
 
         notificationService.createForRole(
                 Role.ADMIN,
-                "Booking cancelled",
-                "Booking cancelled by " + actor.getName() + " for " + booking.getResourceName() +
-                        " on " + booking.getBookingDate() + " at " + booking.getStartTime() + ".",
+                "Booking Cancelled",
+                actor.getName() + " cancelled booking " + booking.getId() + ".",
                 NotificationType.BOOKING_CANCELLED,
                 "BOOKING",
                 booking.getId(),

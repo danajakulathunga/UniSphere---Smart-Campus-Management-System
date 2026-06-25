@@ -854,7 +854,13 @@
   "msg_booking_cancelled_simple": "Your booking for {{resource}} has been cancelled.",
   "msg_lecture_shared_enhanced": "Lecturer {{lecturerName}} shared a lecture session {{lectureName}} scheduled on **{{date}}** at **{{time}}** in **{{location}}**.",
   "msg_lecture_shared_doc_enhanced": "Lecturer {{lecturerName}} shared a lecture session {{lectureName}} scheduled on **{{date}}** at **{{time}}** in **{{location}}**. The **{{documentName}}** was attached.",
-  "msg_attendance_submitted_enhanced": "{{studentName}} has marked attendance for {{lectureName}} session scheduled on {{date}} at {{time}}."
+  "msg_attendance_submitted_enhanced": "{{studentName}} has marked attendance for {{lectureName}} session scheduled on {{date}} at {{time}}.",
+  "Booking Cancelled": "Booking Cancelled",
+  "Booking Updated": "Booking Updated",
+  "msg_booking_updated_admin": "{{userName}} updated booking {{bookingReference}}. Review and approve or reject the updated request.",
+  "msg_booking_cancelled_admin": "{{userName}} cancelled booking {{bookingReference}}.",
+  "msg_booking_approved_updated": "Your updated booking {{bookingReference}} has been approved.",
+  "msg_booking_rejected_updated": "Your updated booking {{bookingReference}} has been rejected."
 }
 
 
