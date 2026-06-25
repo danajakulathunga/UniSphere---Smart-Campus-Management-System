@@ -614,18 +614,20 @@ const MyLecturesPage = () => {
                                   {t("details", "Details")}
                                 </button>
                               )}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setLecturerAttendanceSession(session);
-                                  setLecturerAttendanceModalOpen(true);
-                                  setAttendanceSearchQuery("");
-                                  setAttendancePage(0);
-                                }}
-                                className="table-action-btn !w-auto !flex-initial px-3 bg-violet-600 text-[9px] font-black uppercase tracking-widest text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20"
-                              >
-                                {t("attendance", "Attendance")}
-                              </button>
+                              {session.status === "APPROVED" && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setLecturerAttendanceSession(session);
+                                    setLecturerAttendanceModalOpen(true);
+                                    setAttendanceSearchQuery("");
+                                    setAttendancePage(0);
+                                  }}
+                                  className="table-action-btn !w-auto !flex-initial px-3 bg-violet-600 text-[9px] font-black uppercase tracking-widest text-white hover:bg-violet-500 shadow-lg shadow-violet-600/20"
+                                >
+                                  {t("attendance", "Attendance")}
+                                </button>
+                              )}
                             </>
                           ) : (
                             <>

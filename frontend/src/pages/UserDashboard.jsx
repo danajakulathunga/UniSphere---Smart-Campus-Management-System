@@ -542,7 +542,7 @@ const UserDashboard = () => {
 
       <Modal
         isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
+        onClose={() => {}}
         title={t("first_time_profile_alert_title")}
         maxWidth="max-w-md"
         cornerClose={false}
@@ -553,9 +553,10 @@ const UserDashboard = () => {
             <GraduationCap className="h-8 w-8" />
           </div>
           
-          <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed mb-6 px-1">
-            {t("first_time_profile_alert_msg")}
-          </p>
+          <p 
+            className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed mb-6 px-1"
+            dangerouslySetInnerHTML={{ __html: t("first_time_profile_alert_msg") }}
+          />
 
           <button
             onClick={() => setIsProfileModalOpen(false)}

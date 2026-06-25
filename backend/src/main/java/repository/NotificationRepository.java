@@ -18,6 +18,10 @@ public interface NotificationRepository extends MongoRepository<Notification, St
     boolean existsByUserIdAndTypeAndLectureSessionId(String userId, model.NotificationType type, String lectureSessionId);
 
     boolean existsByUserIdAndTypeAndAttendanceId(String userId, model.NotificationType type, String attendanceId);
+
+    boolean existsByUserIdAndTypeAndReferenceId(String userId, model.NotificationType type, String referenceId);
+
+    java.util.List<Notification> findByUserIdAndTypeAndReferenceId(String userId, model.NotificationType type, String referenceId);
 }
 
 

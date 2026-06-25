@@ -265,6 +265,67 @@ const NotificationsPage = () => {
       let displayMessage = message;
       let contextLine = "";
 
+      // Helper maps for localized resource, category, and location names
+      const getLocalizedFacilityName = (name) => {
+        if (!name) return "";
+        const nameLower = name.toLowerCase();
+        if (nameLower.includes("pc lab") || nameLower.includes("computer lab")) {
+          const suffix = name.match(/\d+/);
+          return suffix ? `${t("pc_lab", { defaultValue: "PC Lab" })} ${suffix[0]}` : t("pc_lab", { defaultValue: "PC Lab" });
+        }
+        if (nameLower.includes("auditorium")) {
+          const suffix = name.match(/\d+/);
+          return suffix ? `${t("auditorium", { defaultValue: "Auditorium" })} ${suffix[0]}` : t("auditorium", { defaultValue: "Auditorium" });
+        }
+        if (nameLower.includes("lecture hall")) {
+          const suffix = name.match(/\d+/);
+          return suffix ? `${t("lecture_hall", { defaultValue: "Lecture Hall" })} ${suffix[0]}` : t("lecture_hall", { defaultValue: "Lecture Hall" });
+        }
+        if (nameLower.includes("meeting room")) {
+          const suffix = name.match(/\d+/);
+          return suffix ? `${t("meeting_room", { defaultValue: "Meeting Room" })} ${suffix[0]}` : t("meeting_room", { defaultValue: "Meeting Room" });
+        }
+        if (nameLower.includes("study room")) {
+          const suffix = name.match(/\d+/);
+          return suffix ? `${t("study_rooms", { defaultValue: "Study Rooms" })} ${suffix[0]}` : t("study_rooms", { defaultValue: "Study Rooms" });
+        }
+        if (nameLower.includes("sport") || nameLower.includes("arena")) {
+          const suffix = name.match(/\d+/);
+          return suffix ? `${t("sport_arena", { defaultValue: "Sport Arena" })} ${suffix[0]}` : t("sport_arena", { defaultValue: "Sport Arena" });
+        }
+        return name;
+      };
+
+      const getLocalizedCategory = (cat) => {
+        if (!cat) return "";
+        const catLower = cat.toLowerCase();
+        if (catLower.includes("it")) {
+          return t("tech_category_it", { defaultValue: "IT Technician" });
+        }
+        if (catLower.includes("electrical")) {
+          return t("tech_category_electrical", { defaultValue: "Electrical Technician" });
+        }
+        if (catLower.includes("mechanical")) {
+          return t("tech_category_mechanical", { defaultValue: "Mechanical Technician" });
+        }
+        if (catLower.includes("maintenance")) {
+          return t("tech_category_maintenance", { defaultValue: "Maintenance Technician" });
+        }
+        return cat;
+      };
+
+      const getLocalizedLocation = (loc) => {
+        if (!loc) return "";
+        const locLower = loc.toLowerCase();
+        if (locLower.includes("block a")) return t("block_a", { defaultValue: "Block A" });
+        if (locLower.includes("block b")) return t("block_b", { defaultValue: "Block B" });
+        if (locLower.includes("block c")) return t("block_c", { defaultValue: "Block C" });
+        if (locLower.includes("block d")) return t("block_d", { defaultValue: "Block D" });
+        if (locLower.includes("library")) return t("library", { defaultValue: "Library" });
+        if (locLower.includes("gymnasium")) return t("gymnasium", { defaultValue: "Gymnasium" });
+        return loc;
+      };
+
       // Format Reference Context
       if (referenceType && referenceId) {
         const shortId = referenceId.substring(0, 8).toUpperCase();
@@ -292,9 +353,17 @@ const NotificationsPage = () => {
           displayMessage = t("msg_user_registered", { name: matchLegacy[1], defaultValue: message });
         }
       } else if (type === "TICKET_CREATED") {
-        const match = message?.match(/(.+?) created a ticket in category (.+?)\./);
-        if (match) {
-          displayMessage = t("msg_ticket_created", { name: match[1], category: match[2], defaultValue: message });
+        const matchStandard = message?.match(/^(.+?) created a ticket for (.+?) at (.+?)\.$/);
+        const matchLegacy = message?.match(/(.+?) created a ticket in category (.+?)\./);
+        if (matchStandard) {
+          displayMessage = t("msg_ticket_created_standard", {
+            userName: matchStandard[1],
+            category: getLocalizedCategory(matchStandard[2]),
+            location: getLocalizedLocation(matchStandard[3]),
+            defaultValue: message
+          });
+        } else if (matchLegacy) {
+          displayMessage = t("msg_ticket_created", { name: matchLegacy[1], category: getLocalizedCategory(matchLegacy[2]), defaultValue: message });
         }
       } else if (type === "TICKET_UPDATED") {
         const match = message?.match(/Ticket #(.+?) was updated by (.+?)\./);
@@ -302,88 +371,172 @@ const NotificationsPage = () => {
           displayMessage = t("msg_ticket_updated", { id: match[1], name: match[2], defaultValue: message });
         }
       } else if (type === "TICKET_ASSIGNED") {
-        const match = message?.match(/You have been assigned ticket #(.+?)\./);
-        if (match) {
-          displayMessage = t("msg_ticket_assigned", { id: match[1], defaultValue: message });
+        const matchStandard = message?.match(/^Ticket #(.+?) is now in progress and assigned to (.+?)\.$/);
+        const matchLegacy = message?.match(/You have been assigned ticket #(.+?)\./);
+        if (matchStandard) {
+          displayMessage = t("msg_ticket_assigned_standard", {
+            id: matchStandard[1],
+            technicianName: matchStandard[2],
+            defaultValue: message
+          });
+        } else if (matchLegacy) {
+          displayMessage = t("msg_ticket_assigned", { id: matchLegacy[1], defaultValue: message });
         }
       } else if (type === "TICKET_STATUS_UPDATED") {
-        const matchAdmin = message?.match(/Ticket #(.+?) was updated to (.+?) by (.+?)\./);
-        const matchUser = message?.match(/Ticket #(.+?) status changed to (.+?)\./);
-        const matchCancel = message?.match(/(.+?) cancelled ticket #(.+?)\./);
-        if (matchAdmin) {
-          const statusKey = matchAdmin[2].toLowerCase().replace(" ", "_");
-          displayMessage = t("msg_admin_status_updated", { id: matchAdmin[1], status: t(statusKey), name: matchAdmin[3], defaultValue: message });
-        } else if (matchUser) {
-          const statusKey = matchUser[2].toLowerCase().replace(" ", "_");
-          displayMessage = t("msg_ticket_status_changed", { id: matchUser[1], status: t(statusKey), defaultValue: message });
-        } else if (matchCancel) {
-          displayMessage = t("msg_ticket_cancelled", { name: matchCancel[1], id: matchCancel[2], defaultValue: message });
+        const matchStandardStatus = message?.match(/^Ticket #(.+?) status updated to (.+?) by (.+?)\.$/);
+        const matchStandardResolved = message?.match(/^Ticket #(.+?) has been resolved by (.+?)\.$/);
+        const matchStandardCancel = message?.match(/^(.+?) cancelled ticket #(.+?)\.$/);
+        const matchLegacyAdmin = message?.match(/Ticket #(.+?) was updated to (.+?) by (.+?)\./);
+        const matchLegacyUser = message?.match(/Ticket #(.+?) status changed to (.+?)\./);
+        const matchLegacyCancel = message?.match(/(.+?) cancelled ticket #(.+?)\./);
+        
+        if (matchStandardStatus) {
+          const statusVal = matchStandardStatus[2];
+          const statusKey = statusVal.toLowerCase().replace(" ", "_");
+          displayMessage = t("msg_ticket_status_updated_standard", {
+            id: matchStandardStatus[1],
+            status: t(statusKey, { defaultValue: statusVal }),
+            actorName: matchStandardStatus[3],
+            defaultValue: message
+          });
+        } else if (matchStandardResolved) {
+          displayMessage = t("msg_ticket_resolved_standard", {
+            id: matchStandardResolved[1],
+            actorName: matchStandardResolved[2],
+            defaultValue: message
+          });
+        } else if (matchStandardCancel) {
+          displayMessage = t("msg_ticket_cancelled_standard", {
+            userName: matchStandardCancel[1],
+            id: matchStandardCancel[2],
+            defaultValue: message
+          });
+        } else if (matchLegacyAdmin) {
+          const statusKey = matchLegacyAdmin[2].toLowerCase().replace(" ", "_");
+          displayMessage = t("msg_admin_status_updated", { id: matchLegacyAdmin[1], status: t(statusKey), name: matchLegacyAdmin[3], defaultValue: message });
+        } else if (matchLegacyUser) {
+          const statusKey = matchLegacyUser[2].toLowerCase().replace(" ", "_");
+          displayMessage = t("msg_ticket_status_changed", { id: matchLegacyUser[1], status: t(statusKey), defaultValue: message });
+        } else if (matchLegacyCancel) {
+          displayMessage = t("msg_ticket_cancelled", { name: matchLegacyCancel[1], id: matchLegacyCancel[2], defaultValue: message });
         }
       } else if (type === "TICKET_COMMENT_ADDED") {
-        const match = message?.match(/(.+?) commented on ticket #(.+?)\./);
-        if (match) {
-          displayMessage = t("msg_tech_new_comment", { name: match[1], id: match[2], defaultValue: message });
+        const matchStandard = message?.match(/^New comment added to Ticket #(.+?) by (.+?)\.$/);
+        const matchLegacy = message?.match(/(.+?) commented on ticket #(.+?)\./);
+        if (matchStandard) {
+          displayMessage = t("msg_ticket_comment_added_standard", {
+            id: matchStandard[1],
+            actorName: matchStandard[2],
+            defaultValue: message
+          });
+        } else if (matchLegacy) {
+          displayMessage = t("msg_tech_new_comment", { name: matchLegacy[1], id: matchLegacy[2], defaultValue: message });
         }
       } else if (type === "BOOKING_CREATED") {
-        const match = message?.match(/(.+?) created a booking request for (.+?)\./);
-        if (match) {
-          displayMessage = t("msg_booking_created", { name: match[1], resource: match[2], defaultValue: message });
+        const matchStandard = message?.match(/^(.+?) created a new booking for (.+?) scheduled on (.+?) at (.+?)\.$/);
+        const matchLegacy = message?.match(/(.+?) created a booking request for (.+?)\./);
+        if (matchStandard) {
+          displayMessage = t("msg_booking_created_standard", {
+            userName: matchStandard[1],
+            resourceName: getLocalizedFacilityName(matchStandard[2]),
+            date: matchStandard[3],
+            time: matchStandard[4],
+            defaultValue: message
+          });
+        } else if (matchLegacy) {
+          displayMessage = t("msg_booking_created", { name: matchLegacy[1], resource: getLocalizedFacilityName(matchLegacy[2]), defaultValue: message });
         }
       } else if (type === "BOOKING_APPROVED") {
-        const matchUpdated = message?.match(/Your updated booking (.+?) has been approved\./);
-        const match = message?.match(/Your booking for (.+?) has been approved\./);
-        if (matchUpdated) {
-          displayMessage = t("msg_booking_approved_updated", { bookingReference: matchUpdated[1], defaultValue: message });
-        } else if (match) {
-          displayMessage = t("msg_booking_confirmed", { resource: match[1], defaultValue: message });
+        const matchStandard = message?.match(/^Your booking for (.+?) on (.+?) at (.+?) has been approved by (.+?)\.$/);
+        const matchLegacyUpdated = message?.match(/Your updated booking (.+?) has been approved\./);
+        const matchLegacy = message?.match(/Your booking for (.+?) has been approved\./);
+        if (matchStandard) {
+          displayMessage = t("msg_booking_approved_standard", {
+            resourceName: getLocalizedFacilityName(matchStandard[1]),
+            date: matchStandard[2],
+            time: matchStandard[3],
+            adminName: matchStandard[4],
+            defaultValue: message
+          });
+        } else if (matchLegacyUpdated) {
+          displayMessage = t("msg_booking_approved_updated", { bookingReference: matchLegacyUpdated[1], defaultValue: message });
+        } else if (matchLegacy) {
+          displayMessage = t("msg_booking_confirmed", { resource: getLocalizedFacilityName(matchLegacy[1]), defaultValue: message });
         }
       } else if (type === "BOOKING_REJECTED") {
-        const matchUpdated = message?.match(/Your updated booking (.+?) has been rejected\./);
-        const match = message?.match(/Your booking for (.+?) was rejected\. Reason: (.+)/);
-        if (matchUpdated) {
-          displayMessage = t("msg_booking_rejected_updated", { bookingReference: matchUpdated[1], defaultValue: message });
-        } else if (match) {
-          displayMessage = t("msg_booking_rejected", { resource: match[1], reason: match[2], defaultValue: message });
+        const matchStandard = message?.match(/^Your booking for (.+?) on (.+?) at (.+?) was rejected by (.+?)\.$/);
+        const matchLegacyUpdated = message?.match(/Your updated booking (.+?) has been rejected\./);
+        const matchLegacy = message?.match(/Your booking for (.+?) was rejected\. Reason: (.+)/);
+        if (matchStandard) {
+          displayMessage = t("msg_booking_rejected_standard", {
+            resourceName: getLocalizedFacilityName(matchStandard[1]),
+            date: matchStandard[2],
+            time: matchStandard[3],
+            adminName: matchStandard[4],
+            defaultValue: message
+          });
+        } else if (matchLegacyUpdated) {
+          displayMessage = t("msg_booking_rejected_updated", { bookingReference: matchLegacyUpdated[1], defaultValue: message });
+        } else if (matchLegacy) {
+          displayMessage = t("msg_booking_rejected", { resource: getLocalizedFacilityName(matchLegacy[1]), reason: matchLegacy[2], defaultValue: message });
         }
       } else if (type === "BOOKING_CANCELLED") {
-        const matchAdmin = message?.match(/(.+?) cancelled booking (.+?)\./);
-        if (matchAdmin) {
-          displayMessage = t("msg_booking_cancelled_admin", { userName: matchAdmin[1], bookingReference: matchAdmin[2], defaultValue: message });
-        } else {
-          const match = message?.match(/Booking cancelled by (.+?) for (.+?) on (.+?) at (.+?)\./);
-          const matchSimple = message?.match(/Your booking for (.+?) has been cancelled\./);
-          if (match) {
-            displayMessage = t("msg_booking_cancelled", { name: match[1], resource: match[2], date: match[3], time: match[4], defaultValue: message });
-          } else if (matchSimple) {
-            displayMessage = t("msg_booking_cancelled_simple", { resource: matchSimple[1], defaultValue: message });
-          }
+        const matchStandard = message?.match(/^(.+?) cancelled the booking for (.+?) scheduled on (.+?) at (.+?)\.$/);
+        const matchLegacyAdmin = message?.match(/(.+?) cancelled booking (.+?)\./);
+        const matchLegacy = message?.match(/Booking cancelled by (.+?) for (.+?) on (.+?) at (.+?)\./);
+        const matchLegacySimple = message?.match(/Your booking for (.+?) has been cancelled\./);
+        if (matchStandard) {
+          displayMessage = t("msg_booking_cancelled_standard", {
+            actorName: matchStandard[1],
+            resourceName: getLocalizedFacilityName(matchStandard[2]),
+            date: matchStandard[3],
+            time: matchStandard[4],
+            defaultValue: message
+          });
+        } else if (matchLegacyAdmin) {
+          displayMessage = t("msg_booking_cancelled_admin", { userName: matchLegacyAdmin[1], bookingReference: matchLegacyAdmin[2], defaultValue: message });
+        } else if (matchLegacy) {
+          displayMessage = t("msg_booking_cancelled", { name: matchLegacy[1], resource: getLocalizedFacilityName(matchLegacy[2]), date: matchLegacy[3], time: matchLegacy[4], defaultValue: message });
+        } else if (matchLegacySimple) {
+          displayMessage = t("msg_booking_cancelled_simple", { resource: getLocalizedFacilityName(matchLegacySimple[1]), defaultValue: message });
         }
       } else if (type === "BOOKING_UPDATED") {
-        const match = message?.match(/(.+?) updated booking (.+?)\. Review and approve or reject the updated request\./);
-        if (match) {
-          displayMessage = t("msg_booking_updated_admin", { userName: match[1], bookingReference: match[2], defaultValue: message });
+        const matchStandard = message?.match(/^(.+?) updated the booking for (.+?) scheduled on (.+?) at (.+?)\.$/);
+        const matchLegacy = message?.match(/(.+?) updated booking (.+?)\. Review and approve or reject the updated request\./);
+        if (matchStandard) {
+          displayMessage = t("msg_booking_updated_standard", {
+            userName: matchStandard[1],
+            resourceName: getLocalizedFacilityName(matchStandard[2]),
+            date: matchStandard[3],
+            time: matchStandard[4],
+            defaultValue: message
+          });
+        } else if (matchLegacy) {
+          displayMessage = t("msg_booking_updated_admin", { userName: matchLegacy[1], bookingReference: matchLegacy[2], defaultValue: message });
         }
       } else if (type === "LECTURE_SHARED" || type === "LECTURE_UPDATED") {
-        const matchDoc = message?.match(/^Lecturer (.+?) shared a lecture session (.+?) scheduled on \*\*(.+?)\*\* at \*\*(.+?)\*\* in \*\*(.+?)\*\*\. The \*\*(.+?)\*\* was attached\.$/);
-        const matchNoDoc = message?.match(/^Lecturer (.+?) shared a lecture session (.+?) scheduled on \*\*(.+?)\*\* at \*\*(.+?)\*\* in \*\*(.+?)\*\*\.$/);
+        const matchDoc = message?.match(/^Lecturer (.+?) (shared|updated) a lecture session (.+?) scheduled on \*\*(.+?)\*\* at \*\*(.+?)\*\* in \*\*(.+?)\*\*\. The \*\*(.+?)\*\* was attached\.$/);
+        const matchNoDoc = message?.match(/^Lecturer (.+?) (shared|updated) a lecture session (.+?) scheduled on \*\*(.+?)\*\* at \*\*(.+?)\*\* in \*\*(.+?)\*\*\.$/);
 
         if (matchDoc) {
-          displayMessage = t("msg_lecture_shared_doc_enhanced", {
+          const key = matchDoc[2] === "updated" ? "msg_lecture_updated_doc_enhanced" : "msg_lecture_shared_doc_enhanced";
+          displayMessage = t(key, {
             lecturerName: matchDoc[1],
-            lectureName: matchDoc[2],
-            date: matchDoc[3],
-            time: matchDoc[4],
-            location: matchDoc[5],
-            documentName: matchDoc[6],
+            lectureName: matchDoc[3],
+            date: matchDoc[4],
+            time: matchDoc[5],
+            location: matchDoc[6],
+            documentName: matchDoc[7],
             defaultValue: message
           });
         } else if (matchNoDoc) {
-          displayMessage = t("msg_lecture_shared_enhanced", {
+          const key = matchNoDoc[2] === "updated" ? "msg_lecture_updated_enhanced" : "msg_lecture_shared_enhanced";
+          displayMessage = t(key, {
             lecturerName: matchNoDoc[1],
-            lectureName: matchNoDoc[2],
-            date: matchNoDoc[3],
-            time: matchNoDoc[4],
-            location: matchNoDoc[5],
+            lectureName: matchNoDoc[3],
+            date: matchNoDoc[4],
+            time: matchNoDoc[5],
+            location: matchNoDoc[6],
             defaultValue: message
           });
         } else {
@@ -396,9 +549,21 @@ const NotificationsPage = () => {
           }
         }
       } else if (type === "LECTURE_CANCELLED") {
-        const match = message?.match(/(.+?) Lecture \((.+?)\) has been canceled/);
-        if (match) {
-          displayMessage = t("msg_lecture_cancelled", { purpose: match[1], defaultValue: message });
+        const matchCancel = message?.match(/^Lecturer (.+?) cancelled the lecture session (.+?) scheduled on \*\*(.+?)\*\* at \*\*(.+?)\*\* in \*\*(.+?)\*\*\.$/);
+        if (matchCancel) {
+          displayMessage = t("msg_lecture_cancelled_enhanced", {
+            lecturerName: matchCancel[1],
+            lectureName: matchCancel[2],
+            date: matchCancel[3],
+            time: matchCancel[4],
+            location: matchCancel[5],
+            defaultValue: message
+          });
+        } else {
+          const match = message?.match(/(.+?) Lecture \((.+?)\) has been canceled/);
+          if (match) {
+            displayMessage = t("msg_lecture_cancelled", { purpose: match[1], defaultValue: message });
+          }
         }
       } else if (type === "STUDENT_BATCH_MATCH") {
         const match = message?.match(/Student (.+?) has joined your batch \((.+?)\)/);

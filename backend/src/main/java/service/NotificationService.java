@@ -67,6 +67,39 @@ public class NotificationService {
         }
 
         // 12. DUPLICATE NOTIFICATION PREVENTION
+        if (type == NotificationType.BOOKING_CREATED ||
+            type == NotificationType.BOOKING_CANCELLED ||
+            type == NotificationType.BOOKING_APPROVED ||
+            type == NotificationType.BOOKING_REJECTED ||
+            type == NotificationType.TICKET_CREATED ||
+            type == NotificationType.TICKET_ASSIGNED) {
+            if (notificationRepository.existsByUserIdAndTypeAndReferenceId(userId, type, referenceId)) {
+                logger.warn("Duplicate notification blocked by ID check: userId={}, type={}, referenceId={}", 
+                            userId, type, referenceId);
+                return null;
+            }
+        }
+
+        if (type == NotificationType.TICKET_STATUS_UPDATED) {
+            String statusKeyword = null;
+            for (model.TicketStatus ts : model.TicketStatus.values()) {
+                if (message.contains(ts.name())) {
+                    statusKeyword = ts.name();
+                    break;
+                }
+            }
+            if (statusKeyword != null) {
+                List<Notification> existing = notificationRepository.findByUserIdAndTypeAndReferenceId(userId, type, referenceId);
+                for (Notification n : existing) {
+                    if (n.getMessage() != null && n.getMessage().contains(statusKeyword)) {
+                        logger.warn("Duplicate status notification blocked (keyword check): userId={}, type={}, referenceId={}, keyword={}", 
+                                    userId, type, referenceId, statusKeyword);
+                        return null;
+                    }
+                }
+            }
+        }
+
         if (notificationRepository.existsByUserIdAndTypeAndReferenceTypeAndReferenceIdAndMessage(userId, type, referenceType, referenceId, message)) {
             logger.warn("Duplicate notification creation blocked (standard): userId={}, type={}, referenceId={}, message={}", 
                         userId, type, referenceId, message);
