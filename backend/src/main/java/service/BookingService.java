@@ -206,24 +206,65 @@ public class BookingService {
         // Notify Students
         if (saved.getAssignedBatch() != null) {
             String title = "New Lecture Shared";
-            String message = saved.getPurpose() + " is available for your batch";
             NotificationType nType = NotificationType.LECTURE_SHARED;
 
             // If it was already shared (assignedBatch was not null), it's an update
             if (isBatchUpdate) {
                 title = "Lecture Updated";
-                message = saved.getPurpose() + " has been updated";
                 nType = NotificationType.LECTURE_UPDATED;
+            }
+
+            // 7. DATA VALIDATION RULES
+            String lecturerName = user.getName();
+            if (lecturerName == null || lecturerName.trim().isEmpty()) lecturerName = "Not Available";
+
+            String lectureName = saved.getPurpose();
+            if (lectureName == null || lectureName.trim().isEmpty()) lectureName = "Not Available";
+
+            String date = saved.getBookingDate() != null ? saved.getBookingDate().toString() : "Not Available";
+            String time = saved.getStartTime() != null ? saved.getStartTime().toString() : "Not Available";
+            String location = saved.getCampusLocation();
+            if (location == null || location.trim().isEmpty()) location = "Not Available";
+
+            // Check document attachment
+            String documentName = null;
+            if (saved.getLectureMaterials() != null && !saved.getLectureMaterials().isEmpty()) {
+                for (String path : saved.getLectureMaterials()) {
+                    if (path.toLowerCase().endsWith(".pdf")) {
+                        int lastSlash = path.lastIndexOf('/');
+                        if (lastSlash != -1) {
+                            documentName = path.substring(lastSlash + 1);
+                        } else {
+                            documentName = path;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Construct strict description format with bold markers
+            String notificationMessage;
+            if (documentName != null && !documentName.trim().isEmpty()) {
+                notificationMessage = "Lecturer " + lecturerName + " shared a lecture session " + lectureName + 
+                                      " scheduled on **" + date + "** at **" + time + "** in **" + location + "**. The **" + documentName + "** was attached.";
+            } else {
+                notificationMessage = "Lecturer " + lecturerName + " shared a lecture session " + lectureName + 
+                                      " scheduled on **" + date + "** at **" + time + "** in **" + location + "**.";
             }
 
             notificationService.createForBatch(
                     saved.getAssignedBatch(),
                     title,
-                    message,
+                    notificationMessage,
                     nType,
                     "LECTURE",
                     saved.getId(),
-                    java.util.Set.of(user.getId()));
+                    java.util.Set.of(user.getId()),
+                    saved.getId(), // lectureSessionId
+                    saved.getId(), // bookingId
+                    null,          // attendanceId
+                    "USER"         // userRole context (Student side)
+            );
 
             logger.info("LECTURE notification triggered for batch: {}", saved.getAssignedBatch());
             System.out.println("Notification created for batch: " + saved.getAssignedBatch() + " (Booking: "

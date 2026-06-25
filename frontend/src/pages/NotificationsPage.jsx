@@ -15,6 +15,21 @@ import { useSearch } from "../context/SearchContext";
 import { formatDate } from "../utils/dateUtils";
 import { useTranslation } from "react-i18next";
 
+const renderMessage = (msg) => {
+  if (!msg) return "";
+  const parts = msg.split(/\*\*([^*]+)\*\*/g);
+  return parts.map((part, index) => {
+    if (index % 2 === 1) {
+      return (
+        <strong key={index} className="font-extrabold text-slate-900 dark:text-white">
+          {part}
+        </strong>
+      );
+    }
+    return part;
+  });
+};
+
 const NotificationsPage = () => {
   const { user, logout, refreshUnreadCount } = useAuth();
   const { t, i18n } = useTranslation();
@@ -206,6 +221,22 @@ const NotificationsPage = () => {
       markRead(item.id);
     }
 
+    if (item.type === "LECTURE_SHARED" || item.type === "LECTURE_UPDATED") {
+      const targetId = item.lectureSessionId || item.bookingId || item.referenceId;
+      if (targetId) {
+        navigate(`/my-lectures?highlight=${targetId}&openDetails=true`);
+        return;
+      }
+    }
+
+    if (item.type === "ATTENDANCE_SUBMITTED" || item.type === "ATTENDANCE_RECORDED") {
+      const targetId = item.lectureSessionId || item.bookingId || item.referenceId;
+      if (targetId) {
+        navigate(`/my-lectures?highlight=${targetId}&openAttendance=true`);
+        return;
+      }
+    }
+
     if (item.referenceType && item.referenceId) {
       const pathMap = {
         BOOKING: "/bookings",
@@ -315,15 +346,37 @@ const NotificationsPage = () => {
         } else if (matchSimple) {
           displayMessage = t("msg_booking_cancelled_simple", { resource: matchSimple[1], defaultValue: message });
         }
-      } else if (type === "LECTURE_SHARED") {
-        const match = message?.match(/(.+?) is available for your batch/);
-        if (match) {
-          displayMessage = t("msg_lecture_shared", { purpose: match[1], defaultValue: message });
-        }
-      } else if (type === "LECTURE_UPDATED") {
-        const match = message?.match(/(.+?) has been updated/);
-        if (match) {
-          displayMessage = t("msg_lecture_updated", { purpose: match[1], defaultValue: message });
+      } else if (type === "LECTURE_SHARED" || type === "LECTURE_UPDATED") {
+        const matchDoc = message?.match(/^Lecturer (.+?) shared a lecture session (.+?) scheduled on \*\*(.+?)\*\* at \*\*(.+?)\*\* in \*\*(.+?)\*\*\. The \*\*(.+?)\*\* was attached\.$/);
+        const matchNoDoc = message?.match(/^Lecturer (.+?) shared a lecture session (.+?) scheduled on \*\*(.+?)\*\* at \*\*(.+?)\*\* in \*\*(.+?)\*\*\.$/);
+
+        if (matchDoc) {
+          displayMessage = t("msg_lecture_shared_doc_enhanced", {
+            lecturerName: matchDoc[1],
+            lectureName: matchDoc[2],
+            date: matchDoc[3],
+            time: matchDoc[4],
+            location: matchDoc[5],
+            documentName: matchDoc[6],
+            defaultValue: message
+          });
+        } else if (matchNoDoc) {
+          displayMessage = t("msg_lecture_shared_enhanced", {
+            lecturerName: matchNoDoc[1],
+            lectureName: matchNoDoc[2],
+            date: matchNoDoc[3],
+            time: matchNoDoc[4],
+            location: matchNoDoc[5],
+            defaultValue: message
+          });
+        } else {
+          const matchLegacy = message?.match(/(.+?) is available for your batch/);
+          const matchLegacyUpdate = message?.match(/(.+?) has been updated/);
+          if (matchLegacy) {
+            displayMessage = t("msg_lecture_shared", { purpose: matchLegacy[1], defaultValue: message });
+          } else if (matchLegacyUpdate) {
+            displayMessage = t("msg_lecture_updated", { purpose: matchLegacyUpdate[1], defaultValue: message });
+          }
         }
       } else if (type === "LECTURE_CANCELLED") {
         const match = message?.match(/(.+?) Lecture \((.+?)\) has been canceled/);
@@ -336,7 +389,16 @@ const NotificationsPage = () => {
           displayMessage = t("msg_student_batch_match", { name: match[1], batch: match[2], defaultValue: message });
         }
       } else if (type === "ATTENDANCE_RECORDED" || type === "ATTENDANCE_SUBMITTED") {
-        if (message?.includes("barcode match failed")) {
+        const matchAttendance = message?.match(/^(.+?) has marked attendance for (.+?) session scheduled on (.+?) at (.+?)\.$/);
+        if (matchAttendance) {
+          displayMessage = t("msg_attendance_submitted_enhanced", {
+            studentName: matchAttendance[1],
+            lectureName: matchAttendance[2],
+            date: matchAttendance[3],
+            time: matchAttendance[4],
+            defaultValue: message
+          });
+        } else if (message?.includes("barcode match failed")) {
           displayMessage = t("msg_attendance_match_error", { defaultValue: message });
         }
       } else if (type === "ANNOUNCEMENT_PUBLISHED") {
@@ -478,7 +540,7 @@ const NotificationsPage = () => {
               <p className={`mt-0.5 text-xs font-medium leading-relaxed transition-colors ${
                 unread ? "text-slate-700 dark:text-slate-300" : "text-slate-500 dark:text-slate-500"
               }`}>
-                {displayMessage}
+                {renderMessage(displayMessage)}
               </p>
               {contextLine && (
                 <p className="mt-1 text-[10px] font-bold text-blue-600/70 dark:text-blue-400/70 flex items-center gap-1">

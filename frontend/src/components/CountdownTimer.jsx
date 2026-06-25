@@ -6,6 +6,7 @@ const CountdownTimer = ({ dateStr, timeStr }) => {
   const { t } = useTranslation();
   const [timeLeft, setTimeLeft] = useState('');
   const [isStartingSoon, setIsStartingSoon] = useState(false);
+  const [isUnderOneHour, setIsUnderOneHour] = useState(false);
   const [isPast, setIsPast] = useState(false);
 
   useEffect(() => {
@@ -53,16 +54,16 @@ const CountdownTimer = ({ dateStr, timeStr }) => {
       if (difference <= 0) {
         setIsPast(true);
         setIsStartingSoon(false);
+        setIsUnderOneHour(false);
         setTimeLeft("00 : 00 : 00");
         return;
       }
 
-      // Less than 1 hour (3600000 ms) = Starting Soon
-      if (difference <= 3600000) {
-        setIsStartingSoon(true);
-      } else {
-        setIsStartingSoon(false);
-      }
+      // Less than 1 hour (3600000 ms) = warning color
+      setIsUnderOneHour(difference <= 3600000);
+
+      // Less than 30 minutes (1800000 ms) = Starting Soon
+      setIsStartingSoon(difference <= 1800000);
 
       const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
@@ -88,7 +89,7 @@ const CountdownTimer = ({ dateStr, timeStr }) => {
 
   return (
     <div className="flex items-center gap-3">
-      <span className={`text-sm font-semibold uppercase tracking-wider px-3 py-1 rounded-lg ${isStartingSoon ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'} flex items-center gap-2`}>
+      <span className={`text-sm font-semibold uppercase tracking-wider px-3 py-1 rounded-lg ${isUnderOneHour ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'} flex items-center gap-2`}>
         <Clock className="h-4 w-4" />
         {timeLeft}
       </span>

@@ -851,7 +851,10 @@
   "msg_lecturer_added": "{{name}} has been added UniSphere - Smart University management System as a Lecturer.",
   "msg_technician_added": "{{name}} has been added UniSphere - Smart University management System as a Technician.",
   "msg_welcome_staff": "Your account has been created successfully. Please log in using the credentials sent to your email.",
-  "msg_booking_cancelled_simple": "Your booking for {{resource}} has been cancelled."
+  "msg_booking_cancelled_simple": "Your booking for {{resource}} has been cancelled.",
+  "msg_lecture_shared_enhanced": "Lecturer {{lecturerName}} shared a lecture session {{lectureName}} scheduled on **{{date}}** at **{{time}}** in **{{location}}**.",
+  "msg_lecture_shared_doc_enhanced": "Lecturer {{lecturerName}} shared a lecture session {{lectureName}} scheduled on **{{date}}** at **{{time}}** in **{{location}}**. The **{{documentName}}** was attached.",
+  "msg_attendance_submitted_enhanced": "{{studentName}} has marked attendance for {{lectureName}} session scheduled on {{date}} at {{time}}."
 }
 
 

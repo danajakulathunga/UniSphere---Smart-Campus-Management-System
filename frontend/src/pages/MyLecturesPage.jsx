@@ -81,6 +81,8 @@ const MyLecturesPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeHighlightId, setActiveHighlightId] = useState(null);
+  const [pendingOpenDetailsId, setPendingOpenDetailsId] = useState(null);
+  const [pendingOpenAttendanceId, setPendingOpenAttendanceId] = useState(null);
 
   const [ratingModalOpen, setRatingModalOpen] = useState(false);
   const [ratingSession, setRatingSession] = useState(null);
@@ -88,6 +90,44 @@ const MyLecturesPage = () => {
 
   const isUser = roles.includes("USER");
   const queryClient = useQueryClient();
+
+  const { data: sessions = [], isLoading, refetch } = useQuery({
+    queryKey: ["my-sessions", user?.year, user?.semester],
+    queryFn: async () => {
+      const res = await api.get("/bookings/sessions", {
+        params: {
+          year: user?.year || "Not specified",
+          semester: user?.semester || "Not specified",
+        },
+      });
+      return res.data || [];
+    },
+    enabled: !!user,
+    refetchInterval: 5000,
+  });
+
+  const { data: myAttendances = [] } = useQuery({
+    queryKey: ["my-attendances", user?.id],
+    queryFn: async () => {
+      const res = await api.get("/attendance/my-attendance");
+      return res.data || [];
+    },
+    enabled: !!user && isUser,
+    refetchInterval: 5000,
+  });
+
+  const attendedBookingIds = useMemo(() => {
+    return new Set(myAttendances.map((a) => a.bookingId || a.lectureSessionId));
+  }, [myAttendances]);
+
+  // Fetch resources for location fallback (for old bookings)
+  const { data: resources = [] } = useQuery({
+    queryKey: ["all-resources-for-sessions"],
+    queryFn: async () => {
+      const res = await api.get("/resources", { params: { size: 100 } });
+      return res.data?.content || [];
+    },
+  });
 
   // Student attendance state
   const [studentAttendanceModalOpen, setStudentAttendanceModalOpen] = useState(false);
@@ -155,9 +195,19 @@ const MyLecturesPage = () => {
   };
 
   React.useEffect(() => {
-    const id = new URLSearchParams(location.search).get("highlight");
+    const params = new URLSearchParams(location.search);
+    const id = params.get("highlight");
+    const openDetails = params.get("openDetails") === "true";
+    const openAttendance = params.get("openAttendance") === "true";
+
     if (id) {
       setActiveHighlightId(id);
+      if (openDetails) {
+        setPendingOpenDetailsId(id);
+      }
+      if (openAttendance) {
+        setPendingOpenAttendanceId(id);
+      }
 
       // Clear the query params via navigate to keep React Router state in sync
       navigate(location.pathname, { replace: true });
@@ -165,7 +215,35 @@ const MyLecturesPage = () => {
       const timer = setTimeout(() => setActiveHighlightId(null), 4000);
       return () => clearTimeout(timer);
     }
-  }, [location.search]);
+  }, [location.search, navigate, location.pathname]);
+
+  React.useEffect(() => {
+    if (sessions && sessions.length > 0) {
+      if (pendingOpenDetailsId) {
+        const session = sessions.find((s) => String(s.id) === String(pendingOpenDetailsId));
+        if (session) {
+          setSelectedSession(session);
+        }
+        setPendingOpenDetailsId(null);
+      }
+      if (pendingOpenAttendanceId) {
+        const session = sessions.find((s) => String(s.id) === String(pendingOpenAttendanceId));
+        if (session) {
+          if (isLecturer) {
+            setLecturerAttendanceSession(session);
+            setLecturerAttendanceModalOpen(true);
+            setAttendanceSearchQuery("");
+            setAttendancePage(0);
+          } else if (isUser) {
+            setStudentAttendanceSession(session);
+            setStudentAttendanceModalOpen(true);
+            setAttendanceScanStep("view_qr");
+          }
+        }
+        setPendingOpenAttendanceId(null);
+      }
+    }
+  }, [sessions, pendingOpenDetailsId, pendingOpenAttendanceId, isLecturer, isUser]);
   const [filters, setFilters] = useState(() => {
     const params = new URLSearchParams(location.search);
     return {
@@ -187,44 +265,6 @@ const MyLecturesPage = () => {
       }));
     }
   }, [location.search]);
-
-  const { data: sessions = [], isLoading, refetch } = useQuery({
-    queryKey: ["my-sessions", user?.year, user?.semester],
-    queryFn: async () => {
-      const res = await api.get("/bookings/sessions", {
-        params: {
-          year: user?.year || "Not specified",
-          semester: user?.semester || "Not specified",
-        },
-      });
-      return res.data || [];
-    },
-    enabled: !!user,
-    refetchInterval: 5000,
-  });
-
-  const { data: myAttendances = [] } = useQuery({
-    queryKey: ["my-attendances", user?.id],
-    queryFn: async () => {
-      const res = await api.get("/attendance/my-attendance");
-      return res.data || [];
-    },
-    enabled: !!user && isUser,
-    refetchInterval: 5000,
-  });
-
-  const attendedBookingIds = useMemo(() => {
-    return new Set(myAttendances.map((a) => a.bookingId || a.lectureSessionId));
-  }, [myAttendances]);
-
-  // Fetch resources for location fallback (for old bookings)
-  const { data: resources = [] } = useQuery({
-    queryKey: ["all-resources-for-sessions"],
-    queryFn: async () => {
-      const res = await api.get("/resources", { params: { size: 100 } });
-      return res.data?.content || [];
-    },
-  });
 
   React.useEffect(() => {
     if (activeHighlightId && sessions.length > 0) {

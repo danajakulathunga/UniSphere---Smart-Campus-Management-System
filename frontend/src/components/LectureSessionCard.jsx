@@ -52,6 +52,8 @@ const LectureSessionCard = ({ session, onClick }) => {
   };
   const [timeLeft, setTimeLeft] = useState("");
   const [isPast, setIsPast] = useState(false);
+  const [isStartingSoon, setIsStartingSoon] = useState(false);
+  const [isUnderOneHour, setIsUnderOneHour] = useState(false);
 
   useEffect(() => {
     const targetDateObj = parseTargetDateTime(session.bookingDate, session.startTime);
@@ -63,11 +65,15 @@ const LectureSessionCard = ({ session, onClick }) => {
 
       if (difference <= 0) {
         setIsPast(true);
+        setIsStartingSoon(false);
+        setIsUnderOneHour(false);
         setTimeLeft("00 : 00 : 00");
         return;
       }
 
       setIsPast(false);
+      setIsUnderOneHour(difference <= 3600000);
+      setIsStartingSoon(difference <= 1800000);
 
       const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
@@ -115,13 +121,19 @@ const LectureSessionCard = ({ session, onClick }) => {
         <div className="flex items-center gap-3">
           {!isPast && (
             <>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100 text-red-700 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-500/20 text-xs font-black">
-                <Clock className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-black ${
+                isUnderOneHour 
+                  ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-500/20" 
+                  : "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-500/20"
+              }`}>
+                <Clock className={`h-3.5 w-3.5 ${isUnderOneHour ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"}`} />
                 <span>{timeLeft}</span>
               </div>
-              <span className="text-xs font-black text-red-600 dark:text-red-400 uppercase tracking-widest">
-                {t("starting_soon", { defaultValue: "Starting Soon" })}
-              </span>
+              {isStartingSoon && (
+                <span className="text-xs font-black text-red-600 dark:text-red-400 uppercase tracking-widest animate-pulse">
+                  {t("starting_soon", { defaultValue: "Starting Soon" })}
+                </span>
+              )}
             </>
           )}
           {isPast && (

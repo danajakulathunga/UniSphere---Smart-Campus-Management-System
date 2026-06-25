@@ -851,7 +851,10 @@
   "msg_lecturer_added": "{{name}} කථිකාචාර්යවරයෙකු ලෙස UniSphere - ස්මාර්ට් විශ්වවිද්‍යාල කළමනාකරණ පද්ධතියට එක් කර ඇත.",
   "msg_technician_added": "{{name}} කාර්මික ශිල්පියෙකු ලෙස UniSphere - ස්මාර්ට් විශ්වවිද්‍යාල කළමනාකරණ පද්ධතියට එක් කර ඇත.",
   "msg_welcome_staff": "ඔබේ ගිණුම සාර්ථකව සාදන ලදී. කරුණාකර ඔබේ විද්‍යුත් තැපෑලට එවන ලද අක්තපත්‍ර භාවිතයෙන් ලොග් වන්න.",
-  "msg_booking_cancelled_simple": "{{resource}} සඳහා වන ඔබගේ වෙන්කරවා ගැනීම අවලංගු කර ඇත."
+  "msg_booking_cancelled_simple": "{{resource}} සඳහා වන ඔබගේ වෙන්කරවා ගැනීම අවලංගු කර ඇත.",
+  "msg_lecture_shared_enhanced": "දේශක {{lecturerName}} විසින් **{{date}}** දින **{{time}}** ට **{{location}}** හි පැවැත්වීමට නියමිත {{lectureName}} දේශන වාරය බෙදාගෙන ඇත.",
+  "msg_lecture_shared_doc_enhanced": "දේශක {{lecturerName}} විසින් **{{date}}** දින **{{time}}** ට **{{location}}** හි පැවැත්වීමට නියමිත {{lectureName}} දේශන වාරය බෙදාගෙන ඇත. **{{documentName}}** අමුණා ඇත.",
+  "msg_attendance_submitted_enhanced": "{{studentName}} විසින් {{date}} දින {{time}} ට පැවැත්වීමට නියමිත {{lectureName}} දේශන වාරය සඳහා පැමිණීම සලකුණු කර ඇත."
 }
 
 
