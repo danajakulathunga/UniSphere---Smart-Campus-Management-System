@@ -3,7 +3,9 @@ package security;
 import model.Provider;
 import model.Role;
 import model.User;
+import model.NotificationType;
 import repository.UserRepository;
+import service.NotificationService;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -13,14 +15,17 @@ import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public CustomOAuth2UserService(UserRepository userRepository) {
+    public CustomOAuth2UserService(UserRepository userRepository, NotificationService notificationService) {
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -64,6 +69,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             user.setRoles(List.of(Role.USER));
             user.setCreatedAt(new Date());
             user = userRepository.save(user);
+
+            // Send notification for new student registered via Google OAuth
+            String notificationMessage = user.getName() + " has joined UniSphere - Smart University management System as a Student.";
+            notificationService.createForRole(Role.ADMIN, "New Student Registered", notificationMessage, NotificationType.USER_REGISTERED, "USER", user.getId(), Set.of());
         }
 
         UserDetailsImpl userDetails = UserDetailsImpl.build(user);

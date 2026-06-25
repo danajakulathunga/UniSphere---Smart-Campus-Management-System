@@ -223,6 +223,7 @@ const BookingsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["bookings-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["my-sessions"] });
     },
     onError: (err, { action }, context) => {
       if (context?.previousBookings) {
@@ -265,6 +266,7 @@ const BookingsPage = () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["bookings-summary"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["my-sessions"] });
     },
     onError: (err, _, context) => {
       if (context?.previousBookings) {
@@ -767,6 +769,7 @@ const BookingsPage = () => {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["bookings"] });
           queryClient.invalidateQueries({ queryKey: ["bookings-summary"] });
+          queryClient.invalidateQueries({ queryKey: ["my-sessions"] });
         }}
       />
 
@@ -781,6 +784,7 @@ const BookingsPage = () => {
           queryClient.invalidateQueries({ queryKey: ["bookings"] });
           queryClient.invalidateQueries({ queryKey: ["bookings-summary"] });
           queryClient.invalidateQueries({ queryKey: ["notifications"] });
+          queryClient.invalidateQueries({ queryKey: ["my-sessions"] });
         }}
       />
 

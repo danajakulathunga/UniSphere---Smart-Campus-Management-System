@@ -14,6 +14,14 @@ public interface NotificationRepository extends MongoRepository<Notification, St
     void deleteAllByUserId(String userId);
 
     boolean existsByUserIdAndTypeAndReferenceTypeAndReferenceIdAndMessage(String userId, model.NotificationType type, String referenceType, String referenceId, String message);
+
+    boolean existsByUserIdAndTypeAndLectureSessionId(String userId, model.NotificationType type, String lectureSessionId);
+
+    boolean existsByUserIdAndTypeAndAttendanceId(String userId, model.NotificationType type, String attendanceId);
+
+    boolean existsByUserIdAndTypeAndReferenceId(String userId, model.NotificationType type, String referenceId);
+
+    java.util.List<Notification> findByUserIdAndTypeAndReferenceId(String userId, model.NotificationType type, String referenceId);
 }
 
 

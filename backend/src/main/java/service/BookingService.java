@@ -115,7 +115,7 @@ public class BookingService {
         notificationService.createForRole(
                 Role.ADMIN,
                 "New booking request",
-                user.getName() + " created a booking request for " + booking.getResourceName() + ".",
+                user.getName() + " created a new booking for " + booking.getResourceName() + " scheduled on " + booking.getBookingDate() + " at " + booking.getStartTime() + ".",
                 NotificationType.BOOKING_CREATED,
                 "BOOKING",
                 booking.getId(),
@@ -157,12 +157,9 @@ public class BookingService {
                     id);
         }
 
-        // Only reset to PENDING if it wasn't already APPROVED
-        if (booking.getStatus() != BookingStatus.APPROVED) {
-            booking.setStatus(BookingStatus.PENDING);
-            // Update "Submitted" timestamp to current time for new submissions
-            booking.setCreatedAt(LocalDateTime.now());
-        }
+        // Always reset status to PENDING on update
+        booking.setStatus(BookingStatus.PENDING);
+        booking.setCreatedAt(LocalDateTime.now());
 
         // Check if it's a share or update for students
         boolean isNewlyShared = booking.getAssignedBatch() == null && request.getAssignedBatch() != null;
@@ -178,9 +175,7 @@ public class BookingService {
         booking.setAssignedBatch(request.getAssignedBatch());
         booking.setSessionDetails(request.getSessionDetails());
         booking.setCapacity(request.getCapacity());
-        if (isBatchUpdate) {
-            booking.setIsUpdated(true);
-        }
+        booking.setIsUpdated(true);
         if (booking.getQrCode() == null) {
             booking.setQrCode(java.util.UUID.randomUUID().toString());
         }
@@ -206,39 +201,78 @@ public class BookingService {
         // Notify Students
         if (saved.getAssignedBatch() != null) {
             String title = "New Lecture Shared";
-            String message = saved.getPurpose() + " is available for your batch";
             NotificationType nType = NotificationType.LECTURE_SHARED;
 
             // If it was already shared (assignedBatch was not null), it's an update
             if (isBatchUpdate) {
                 title = "Lecture Updated";
-                message = saved.getPurpose() + " has been updated";
                 nType = NotificationType.LECTURE_UPDATED;
+            }
+
+            // 7. DATA VALIDATION RULES
+            String lecturerName = user.getName();
+            if (lecturerName == null || lecturerName.trim().isEmpty()) lecturerName = "Not Available";
+
+            String lectureName = saved.getPurpose();
+            if (lectureName == null || lectureName.trim().isEmpty()) lectureName = "Not Available";
+
+            String date = saved.getBookingDate() != null ? saved.getBookingDate().toString() : "Not Available";
+            String time = saved.getStartTime() != null ? saved.getStartTime().toString() : "Not Available";
+            String location = saved.getCampusLocation();
+            if (location == null || location.trim().isEmpty()) location = "Not Available";
+
+            // Check document attachment
+            String documentName = null;
+            if (saved.getLectureMaterials() != null && !saved.getLectureMaterials().isEmpty()) {
+                for (String path : saved.getLectureMaterials()) {
+                    if (path.toLowerCase().endsWith(".pdf")) {
+                        int lastSlash = path.lastIndexOf('/');
+                        if (lastSlash != -1) {
+                            documentName = path.substring(lastSlash + 1);
+                        } else {
+                            documentName = path;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Construct strict description format with bold markers
+            String notificationMessage;
+            String verb = isBatchUpdate ? "updated" : "shared";
+            if (documentName != null && !documentName.trim().isEmpty()) {
+                notificationMessage = "Lecturer " + lecturerName + " " + verb + " a lecture session " + lectureName + 
+                                      " scheduled on **" + date + "** at **" + time + "** in **" + location + "**. The **" + documentName + "** was attached.";
+            } else {
+                notificationMessage = "Lecturer " + lecturerName + " " + verb + " a lecture session " + lectureName + 
+                                      " scheduled on **" + date + "** at **" + time + "** in **" + location + "**.";
             }
 
             notificationService.createForBatch(
                     saved.getAssignedBatch(),
                     title,
-                    message,
+                    notificationMessage,
                     nType,
                     "LECTURE",
                     saved.getId(),
-                    java.util.Set.of(user.getId()));
+                    java.util.Set.of(user.getId()),
+                    saved.getId(), // lectureSessionId
+                    saved.getId(), // bookingId
+                    null,          // attendanceId
+                    "USER"         // userRole context (Student side)
+            );
 
             logger.info("LECTURE notification triggered for batch: {}", saved.getAssignedBatch());
             System.out.println("Notification created for batch: " + saved.getAssignedBatch() + " (Booking: "
                     + saved.getId() + ")");
         }
-
-        // Notify Admin about the update/re-submission as a new request for approval
         notificationService.createForRole(
                 Role.ADMIN,
-                "Booking Re-submission",
-                user.getName() + " has updated their reservation for " + booking.getResourceName() +
-                        ". This requires your re-approval.",
-                NotificationType.BOOKING_CREATED,
+                "Booking Updated",
+                user.getName() + " updated the booking for " + saved.getResourceName() + " scheduled on " + saved.getBookingDate() + " at " + saved.getStartTime() + ".",
+                NotificationType.BOOKING_UPDATED,
                 "BOOKING",
-                booking.getId(),
+                saved.getId(),
                 java.util.Set.of(user.getId()));
 
         return saved;
@@ -365,7 +399,7 @@ public class BookingService {
         }
     }
 
-    public Booking approveBooking(String bookingId, String reason) {
+    public Booking approveBooking(String bookingId, String reason, User admin) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found."));
 
@@ -376,19 +410,32 @@ public class BookingService {
         booking.setDecisionReason(reason);
         Booking saved = bookingRepository.save(booking);
 
-        notificationService.createForUser(
-                booking.getUserId(),
-                null, // Role is determined by the user's role in createForUser if needed
-                "Booking approved",
-                "Your booking for " + booking.getResourceName() + " has been approved.",
-                NotificationType.BOOKING_APPROVED,
-                "BOOKING",
-                booking.getId());
+        String adminName = admin != null ? admin.getName() : "Admin";
+
+        if (Boolean.TRUE.equals(booking.getIsUpdated())) {
+            notificationService.createForUser(
+                    booking.getUserId(),
+                    null,
+                    "Booking Approved",
+                    "Your booking for " + booking.getResourceName() + " on " + booking.getBookingDate() + " at " + booking.getStartTime() + " has been approved by " + adminName + ".",
+                    NotificationType.BOOKING_APPROVED,
+                    "BOOKING",
+                    booking.getId());
+        } else {
+            notificationService.createForUser(
+                    booking.getUserId(),
+                    null, // Role is determined by the user's role in createForUser if needed
+                    "Booking approved",
+                    "Your booking for " + booking.getResourceName() + " on " + booking.getBookingDate() + " at " + booking.getStartTime() + " has been approved by " + adminName + ".",
+                    NotificationType.BOOKING_APPROVED,
+                    "BOOKING",
+                    booking.getId());
+        }
 
         return saved;
     }
 
-    public Booking rejectBooking(String bookingId, String reason) {
+    public Booking rejectBooking(String bookingId, String reason, User admin) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found."));
 
@@ -396,14 +443,27 @@ public class BookingService {
         booking.setDecisionReason(reason);
         Booking saved = bookingRepository.save(booking);
 
-        notificationService.createForUser(
-                booking.getUserId(),
-                null,
-                "Booking rejected",
-                "Your booking for " + booking.getResourceName() + " was rejected. Reason: " + reason,
-                NotificationType.BOOKING_REJECTED,
-                "BOOKING",
-                booking.getId());
+        String adminName = admin != null ? admin.getName() : "Admin";
+
+        if (Boolean.TRUE.equals(booking.getIsUpdated())) {
+            notificationService.createForUser(
+                    booking.getUserId(),
+                    null,
+                    "Booking Rejected",
+                    "Your booking for " + booking.getResourceName() + " on " + booking.getBookingDate() + " at " + booking.getStartTime() + " was rejected by " + adminName + ".",
+                    NotificationType.BOOKING_REJECTED,
+                    "BOOKING",
+                    booking.getId());
+        } else {
+            notificationService.createForUser(
+                    booking.getUserId(),
+                    null,
+                    "Booking rejected",
+                    "Your booking for " + booking.getResourceName() + " on " + booking.getBookingDate() + " at " + booking.getStartTime() + " was rejected by " + adminName + ".",
+                    NotificationType.BOOKING_REJECTED,
+                    "BOOKING",
+                    booking.getId());
+        }
 
         return saved;
     }
@@ -434,7 +494,7 @@ public class BookingService {
                     booking.getUserId(),
                     null,
                     "Booking Cancelled",
-                    "Your booking for " + booking.getResourceName() + " has been cancelled.",
+                    actor.getName() + " cancelled the booking for " + booking.getResourceName() + " scheduled on " + booking.getBookingDate() + " at " + booking.getStartTime() + ".",
                     NotificationType.BOOKING_CANCELLED,
                     "BOOKING",
                     booking.getId());
@@ -442,21 +502,37 @@ public class BookingService {
 
         // Notify Students if it was shared
         if (booking.getAssignedBatch() != null) {
+            String lecturerName = actor.getName();
+            if (lecturerName == null || lecturerName.trim().isEmpty()) lecturerName = "Not Available";
+            String lectureName = booking.getPurpose();
+            if (lectureName == null || lectureName.trim().isEmpty()) lectureName = "Not Available";
+            String date = booking.getBookingDate() != null ? booking.getBookingDate().toString() : "Not Available";
+            String time = booking.getStartTime() != null ? booking.getStartTime().toString() : "Not Available";
+            String location = booking.getCampusLocation();
+            if (location == null || location.trim().isEmpty()) location = "Not Available";
+
+            String cancelMessage = "Lecturer " + lecturerName + " cancelled the lecture session " + lectureName +
+                                   " scheduled on **" + date + "** at **" + time + "** in **" + location + "**.";
+
             notificationService.createForBatch(
                     booking.getAssignedBatch(),
                     "Lecture Canceled",
-                    booking.getPurpose() + " has been canceled",
+                    cancelMessage,
                     NotificationType.LECTURE_CANCELLED,
                     "LECTURE",
                     booking.getId(),
-                    java.util.Set.of(actor.getId()));
+                    java.util.Set.of(actor.getId()),
+                    booking.getId(), // lectureSessionId
+                    booking.getId(), // bookingId
+                    null,          // attendanceId
+                    "USER"         // userRole context (Student side)
+            );
         }
 
         notificationService.createForRole(
                 Role.ADMIN,
-                "Booking cancelled",
-                "Booking cancelled by " + actor.getName() + " for " + booking.getResourceName() +
-                        " on " + booking.getBookingDate() + " at " + booking.getStartTime() + ".",
+                "Booking Cancelled",
+                actor.getName() + " cancelled the booking for " + booking.getResourceName() + " scheduled on " + booking.getBookingDate() + " at " + booking.getStartTime() + ".",
                 NotificationType.BOOKING_CANCELLED,
                 "BOOKING",
                 booking.getId(),

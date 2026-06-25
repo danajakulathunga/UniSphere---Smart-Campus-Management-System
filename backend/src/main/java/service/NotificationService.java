@@ -40,6 +40,20 @@ public class NotificationService {
                                       NotificationType type,
                                       String referenceType,
                                       String referenceId) {
+        return createForUser(userId, recipientRole, title, message, type, referenceType, referenceId, null, null, null, null);
+    }
+
+    public Notification createForUser(String userId,
+                                      Role recipientRole,
+                                      String title,
+                                      String message,
+                                      NotificationType type,
+                                      String referenceType,
+                                      String referenceId,
+                                      String lectureSessionId,
+                                      String bookingId,
+                                      String attendanceId,
+                                      String userRole) {
         LocalDateTime createdAt = LocalDateTime.now();
 
         // 13. DATABASE VALIDATION
@@ -53,9 +67,54 @@ public class NotificationService {
         }
 
         // 12. DUPLICATE NOTIFICATION PREVENTION
+        if (type == NotificationType.BOOKING_CREATED ||
+            type == NotificationType.BOOKING_CANCELLED ||
+            type == NotificationType.BOOKING_APPROVED ||
+            type == NotificationType.BOOKING_REJECTED ||
+            type == NotificationType.TICKET_CREATED ||
+            type == NotificationType.TICKET_ASSIGNED) {
+            if (notificationRepository.existsByUserIdAndTypeAndReferenceId(userId, type, referenceId)) {
+                logger.warn("Duplicate notification blocked by ID check: userId={}, type={}, referenceId={}", 
+                            userId, type, referenceId);
+                return null;
+            }
+        }
+
+        if (type == NotificationType.TICKET_STATUS_UPDATED) {
+            String statusKeyword = null;
+            for (model.TicketStatus ts : model.TicketStatus.values()) {
+                if (message.contains(ts.name())) {
+                    statusKeyword = ts.name();
+                    break;
+                }
+            }
+            if (statusKeyword != null) {
+                List<Notification> existing = notificationRepository.findByUserIdAndTypeAndReferenceId(userId, type, referenceId);
+                for (Notification n : existing) {
+                    if (n.getMessage() != null && n.getMessage().contains(statusKeyword)) {
+                        logger.warn("Duplicate status notification blocked (keyword check): userId={}, type={}, referenceId={}, keyword={}", 
+                                    userId, type, referenceId, statusKeyword);
+                        return null;
+                    }
+                }
+            }
+        }
+
         if (notificationRepository.existsByUserIdAndTypeAndReferenceTypeAndReferenceIdAndMessage(userId, type, referenceType, referenceId, message)) {
-            logger.warn("Duplicate notification creation blocked: userId={}, type={}, referenceId={}, message={}", 
+            logger.warn("Duplicate notification creation blocked (standard): userId={}, type={}, referenceId={}, message={}", 
                         userId, type, referenceId, message);
+            return null;
+        }
+
+        if (lectureSessionId != null && notificationRepository.existsByUserIdAndTypeAndLectureSessionId(userId, type, lectureSessionId)) {
+            logger.warn("Duplicate notification creation blocked (lectureSessionId): userId={}, type={}, lectureSessionId={}", 
+                        userId, type, lectureSessionId);
+            return null;
+        }
+
+        if (attendanceId != null && notificationRepository.existsByUserIdAndTypeAndAttendanceId(userId, type, attendanceId)) {
+            logger.warn("Duplicate notification creation blocked (attendanceId): userId={}, type={}, attendanceId={}", 
+                        userId, type, attendanceId);
             return null;
         }
 
@@ -95,6 +154,12 @@ public class NotificationService {
         notification.setReferenceId(referenceId);
         notification.setRead(false);
         notification.setCreatedAt(createdAt);
+        
+        notification.setLectureSessionId(lectureSessionId);
+        notification.setBookingId(bookingId);
+        notification.setAttendanceId(attendanceId);
+        notification.setUserRole(userRole);
+
         Notification saved = notificationRepository.save(notification);
         logger.info("Notification created and saved: id={}, type={}, userId={}", saved.getId(), saved.getType(), saved.getUserId());
         return saved;
@@ -133,6 +198,20 @@ public class NotificationService {
                                       String referenceType,
                                       String referenceId,
                                       Set<String> excludedUserIds) {
+        createForParticipants(participants, title, message, type, referenceType, referenceId, excludedUserIds, null, null, null, null);
+    }
+
+    public void createForParticipants(List<User> participants,
+                                      String title,
+                                      String message,
+                                      NotificationType type,
+                                      String referenceType,
+                                      String referenceId,
+                                      Set<String> excludedUserIds,
+                                      String lectureSessionId,
+                                      String bookingId,
+                                      String attendanceId,
+                                      String userRole) {
         Set<String> exclude = excludedUserIds == null ? Set.of() : excludedUserIds;
 
         for (User participant : participants) {
@@ -150,7 +229,11 @@ public class NotificationService {
                     message,
                     type,
                     referenceType,
-                    referenceId);
+                    referenceId,
+                    lectureSessionId,
+                    bookingId,
+                    attendanceId,
+                    userRole);
             
             System.out.println("Notification created for: " + participant.getId() + " (Type: " + type + ")");
         }
@@ -163,6 +246,20 @@ public class NotificationService {
                                String referenceType,
                                String referenceId,
                                Set<String> excludedUserIds) {
+        createForBatch(batchTag, title, message, type, referenceType, referenceId, excludedUserIds, null, null, null, null);
+    }
+
+    public void createForBatch(String batchTag,
+                               String title,
+                               String message,
+                               NotificationType type,
+                               String referenceType,
+                               String referenceId,
+                               Set<String> excludedUserIds,
+                               String lectureSessionId,
+                               String bookingId,
+                               String attendanceId,
+                               String userRole) {
         if (batchTag == null || !batchTag.startsWith("Y")) return;
 
         // Extract Year and Semester from Y#S#
@@ -176,7 +273,7 @@ public class NotificationService {
         List<User> recipients = userRepository.findByYearAndSemester(yearFull, semFull);
         logger.info("Triggering notifications for batch {}: Found {} recipients", batchTag, recipients.size());
         
-        createForParticipants(recipients, title, message, type, referenceType, referenceId, excludedUserIds);
+        createForParticipants(recipients, title, message, type, referenceType, referenceId, excludedUserIds, lectureSessionId, bookingId, attendanceId, userRole);
     }
 
     public Page<Notification> getUserNotifications(String userId, Pageable pageable) {

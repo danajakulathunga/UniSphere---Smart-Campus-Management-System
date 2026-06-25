@@ -214,16 +214,32 @@ public class AttendanceController {
 
         Attendance saved = attendanceRepository.save(attendance);
 
-        // Send notification to lecturer
-        String msg = studentName + " marked attendance for " + booking.getPurpose() + " Session.";
+        // 7. DATA VALIDATION RULES & safe fallbacks
+        String sName = studentName;
+        if (sName == null || sName.trim().isEmpty()) sName = "Not Available";
+
+        String lectureName = booking.getPurpose();
+        if (lectureName == null || lectureName.trim().isEmpty()) lectureName = "Not Available";
+
+        String date = booking.getBookingDate() != null ? booking.getBookingDate().toString() : "Not Available";
+        String time = booking.getStartTime() != null ? booking.getStartTime().toString() : "Not Available";
+
+        // Notification format (STRICT)
+        String notificationMessage = sName + " has marked attendance for " + lectureName + " session scheduled on " + date + " at " + time + ".";
+
+        // Send notification to lecturer with metadata
         notificationService.createForUser(
                 booking.getUserId(),
                 Role.LECTURER,
                 "Attendance Submitted",
-                msg,
+                notificationMessage,
                 NotificationType.ATTENDANCE_SUBMITTED,
                 "LECTURE",
-                booking.getId()
+                booking.getId(),
+                booking.getId(),         // lectureSessionId
+                booking.getId(),         // bookingId
+                saved.getAttendanceId(), // attendanceId
+                "LECTURER"               // userRole context (Lecturer side)
         );
 
         return ResponseEntity.ok(saved);

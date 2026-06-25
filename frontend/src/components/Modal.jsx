@@ -2,7 +2,7 @@ import React, { useEffect, useCallback } from "react";
 import { X } from "lucide-react";
 import { useScrollLock } from "../hooks/useScrollLock";
 
-const Modal = ({ isOpen, onClose, title, subtitle, children, footer, maxWidth = "max-w-2xl", scrollable = true, cornerClose = true, centerTitle = false }) => {
+const Modal = ({ isOpen, onClose, title, subtitle, children, footer, maxWidth = "max-w-2xl", scrollable = true, cornerClose = true, centerTitle = false, showCloseButton = true }) => {
   // Use the reusable scroll lock hook
   useScrollLock(isOpen);
 
@@ -60,13 +60,15 @@ const Modal = ({ isOpen, onClose, title, subtitle, children, footer, maxWidth = 
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`group ${cornerClose ? "absolute top-3 right-3 z-[20]" : "relative"} flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 dark:bg-white/5 dark:hover:bg-rose-500/10 dark:hover:text-rose-500`}
-          >
-            <X className="h-4 w-4 transition-transform group-hover:rotate-90 group-active:scale-90" />
-          </button>
+          {showCloseButton && (
+            <button
+              type="button"
+              onClick={onClose}
+              className={`group ${cornerClose ? "absolute top-3 right-3 z-[20]" : "relative"} flex h-9 w-9 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 dark:bg-white/5 dark:hover:bg-rose-500/10 dark:hover:text-rose-500`}
+            >
+              <X className="h-4 w-4 transition-transform group-hover:rotate-90 group-active:scale-90" />
+            </button>
+          )}
         </div>
 
         {/* Content Section */}

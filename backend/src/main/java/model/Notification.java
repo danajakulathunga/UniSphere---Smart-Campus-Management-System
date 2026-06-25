@@ -20,6 +20,11 @@ public class Notification {
     private String referenceType;
     private String referenceId;
     private boolean read;
+    
+    private String lectureSessionId;
+    private String bookingId;
+    private String attendanceId;
+    private String userRole;
 
     @CreatedDate
     private LocalDateTime createdAt;
@@ -113,6 +118,38 @@ public class Notification {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getLectureSessionId() {
+        return lectureSessionId;
+    }
+
+    public void setLectureSessionId(String lectureSessionId) {
+        this.lectureSessionId = lectureSessionId;
+    }
+
+    public String getBookingId() {
+        return bookingId;
+    }
+
+    public void setBookingId(String bookingId) {
+        this.bookingId = bookingId;
+    }
+
+    public String getAttendanceId() {
+        return attendanceId;
+    }
+
+    public void setAttendanceId(String attendanceId) {
+        this.attendanceId = attendanceId;
+    }
+
+    public String getUserRole() {
+        return userRole;
+    }
+
+    public void setUserRole(String userRole) {
+        this.userRole = userRole;
     }
 }
 

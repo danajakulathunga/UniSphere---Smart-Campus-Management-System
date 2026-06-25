@@ -87,14 +87,16 @@ public class BookingController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Booking> approveBooking(@PathVariable String id,
                                                   @Valid @RequestBody BookingDecisionRequest request) {
-        return ResponseEntity.ok(bookingService.approveBooking(id, request.getReason()));
+        User admin = currentUserService.getCurrentUser();
+        return ResponseEntity.ok(bookingService.approveBooking(id, request.getReason(), admin));
     }
 
     @PatchMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Booking> rejectBooking(@PathVariable String id,
                                                  @Valid @RequestBody BookingDecisionRequest request) {
-        return ResponseEntity.ok(bookingService.rejectBooking(id, request.getReason()));
+        User admin = currentUserService.getCurrentUser();
+        return ResponseEntity.ok(bookingService.rejectBooking(id, request.getReason(), admin));
     }
 
     @PatchMapping("/{id}/cancel")

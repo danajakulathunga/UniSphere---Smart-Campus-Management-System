@@ -81,7 +81,7 @@ public class TicketService {
         notificationService.createForRole(
             Role.ADMIN,
             "New incident ticket",
-            user.getName() + " created a ticket in category " + ticket.getCategory() + ".",
+            user.getName() + " created a ticket for " + ticket.getCategory() + " at " + ticket.getLocation() + ".",
             NotificationType.TICKET_CREATED,
             "TICKET",
             ticket.getId(),
@@ -259,7 +259,7 @@ public class TicketService {
             technician.getId(),
             Role.TECHNICIAN,
             "Ticket assigned",
-            "You have been assigned ticket #" + ticket.getId() + ".",
+            "Ticket #" + ticket.getId() + " is now in progress and assigned to " + technician.getName() + ".",
             NotificationType.TICKET_ASSIGNED,
             "TICKET",
             ticket.getId());
@@ -268,7 +268,7 @@ public class TicketService {
             ticket.getUserId(),
             null,
             "Ticket assigned",
-            "Ticket #" + ticket.getId() + " was assigned to " + technician.getName() + ".",
+            "Ticket #" + ticket.getId() + " is now in progress and assigned to " + technician.getName() + ".",
             NotificationType.TICKET_ASSIGNED,
             "TICKET",
             ticket.getId());
@@ -304,11 +304,15 @@ public class TicketService {
         ticket.setUpdatedAt(LocalDateTime.now());
         Ticket saved = ticketRepository.save(ticket);
 
+        String updateMsg = (status == TicketStatus.RESOLVED) 
+            ? "Ticket #" + ticket.getId() + " has been resolved by " + actor.getName() + "."
+            : "Ticket #" + ticket.getId() + " status updated to " + status.name() + " by " + actor.getName() + ".";
+
         notificationService.createForUser(
                 ticket.getUserId(),
                 null,
                 "Ticket update",
-                "Ticket #" + ticket.getId() + " status changed to " + status + ".",
+                updateMsg,
                 NotificationType.TICKET_STATUS_UPDATED,
                 "TICKET",
                 ticket.getId());
@@ -316,7 +320,7 @@ public class TicketService {
         notificationService.createForRole(
             Role.ADMIN,
             "Ticket status updated",
-            "Ticket #" + ticket.getId() + " was updated to " + status + " by " + actor.getName() + ".",
+            updateMsg,
             NotificationType.TICKET_STATUS_UPDATED,
             "TICKET",
             ticket.getId(),
@@ -399,7 +403,7 @@ public class TicketService {
         notificationService.createForParticipants(
                 validParticipants,
                 "New ticket comment",
-                actor.getName() + " commented on ticket #" + ticket.getId() + ".",
+                "New comment added to Ticket #" + ticket.getId() + " by " + actor.getName() + ".",
                 NotificationType.TICKET_COMMENT_ADDED,
                 "TICKET",
                 ticket.getId(),
