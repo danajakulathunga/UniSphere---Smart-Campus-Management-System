@@ -152,6 +152,9 @@ const UserDashboard = () => {
   const topSessions = useMemo(() => {
     return batchSessions
       .filter((session) => {
+        // Exclude cancelled sessions
+        if (session.status === "CANCELLED") return false;
+
         try {
           let y, m, d, h = 0, min = 0;
           if (Array.isArray(session.bookingDate)) {

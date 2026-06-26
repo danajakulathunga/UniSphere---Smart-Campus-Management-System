@@ -382,12 +382,12 @@ const TicketsPage = () => {
     },
   });
 
-  const deleteMutation = useMutation({
+  const cancelMutation = useMutation({
     mutationFn: async (ticketId) => {
-      await api.delete(`/tickets/${ticketId}`);
+      await api.patch(`/tickets/${ticketId}/cancel`);
     },
     onSuccess: () => {
-      showAlert("success", t("success_ticket_cancelled", { defaultValue: "Ticket cancelled and deleted successfully!" }));
+      showAlert("success", t("success_ticket_cancelled", { defaultValue: "Ticket cancelled successfully!" }));
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
       queryClient.invalidateQueries({ queryKey: ["tickets-summary"] });
     },
@@ -500,10 +500,10 @@ const TicketsPage = () => {
 
   const cancelTicket = (ticketId) => {
     if (
-      !window.confirm("Are you sure you want to cancel and delete this ticket?")
+      !window.confirm("Are you sure you want to cancel this ticket?")
     )
       return;
-    deleteMutation.mutate(ticketId);
+    cancelMutation.mutate(ticketId);
   };
 
   const openCommentsModal = async (ticket) => {

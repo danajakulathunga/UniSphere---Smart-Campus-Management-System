@@ -365,19 +365,23 @@ const MyLecturesPage = () => {
     }
   };
 
-  const isAttendanceExpired = (booking) => {
-    if (!booking) return true;
+  const isAttendanceOpen = (booking) => {
+    if (!booking) return false;
     try {
-      let y, m, d, h, min;
+      let y, m, d, hS, minS, hE, minE;
       if (Array.isArray(booking.bookingDate)) [y, m, d] = booking.bookingDate;
       else [y, m, d] = booking.bookingDate.split("-").map(Number);
-      if (Array.isArray(booking.endTime)) [h, min] = booking.endTime;
-      else [h, min] = booking.endTime.split(":").map(Number);
+      if (Array.isArray(booking.startTime)) [hS, minS] = booking.startTime;
+      else [hS, minS] = booking.startTime.split(":").map(Number);
+      if (Array.isArray(booking.endTime)) [hE, minE] = booking.endTime;
+      else [hE, minE] = booking.endTime.split(":").map(Number);
 
-      const endLimit = new Date(y, m - 1, d, h, min + 15);
-      return new Date() > endLimit;
+      const now = new Date();
+      const openFrom = new Date(y, m - 1, d, hS, minS - 5); // 5 min before start
+      const closedAfter = new Date(y, m - 1, d, hE, minE + 15); // 15 min after end
+      return now >= openFrom && now <= closedAfter;
     } catch (e) {
-      return true;
+      return false;
     }
   };
 
@@ -614,7 +618,7 @@ const MyLecturesPage = () => {
                                   {t("details", "Details")}
                                 </button>
                               )}
-                              {session.status === "APPROVED" && (
+                              {(session.status === "APPROVED" || session.isUpdated) && session.status !== "CANCELLED" && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -640,7 +644,7 @@ const MyLecturesPage = () => {
                               >
                                 {t("details", "Details")}
                               </button>
-                                 {isUser && session.status === "APPROVED" && !isAttendanceExpired(session) && (
+                                 {isUser && (session.status === "APPROVED" || session.isUpdated) && session.status !== "CANCELLED" && isAttendanceOpen(session) && (
                                    <button
                                      onClick={(e) => {
                                        e.stopPropagation();
@@ -650,12 +654,12 @@ const MyLecturesPage = () => {
                                          showAlert("info", t("attendance_already_recorded", "Attendance has already been recorded for this lecture session"));
                                          return;
                                        }
-
+ 
                                        // Open instantly with zero latency
                                        setStudentAttendanceSession(session);
                                        setStudentAttendanceModalOpen(true);
                                        setAttendanceScanStep("view_qr");
-
+ 
                                        // Run check and refresh in the background
                                        (async () => {
                                          try {
@@ -668,7 +672,7 @@ const MyLecturesPage = () => {
                                              showAlert("info", t("attendance_already_recorded", "Attendance has already been recorded for this lecture session"));
                                              return;
                                            }
-
+ 
                                            const res = await api.post(`/bookings/${session.id}/refresh-qr`);
                                            setStudentAttendanceSession(res.data);
                                            queryClient.invalidateQueries(["my-sessions"]);
@@ -682,7 +686,7 @@ const MyLecturesPage = () => {
                                    {t("attendance", "Attendance")}
                                  </button>
                                )}
-                              {isUser && session.status === "APPROVED" && hasFinished(session) && (
+                              {isUser && (session.status === "APPROVED" || session.isUpdated) && session.status !== "CANCELLED" && hasFinished(session) && (
                                 <button
                                   disabled={!!session.rating}
                                   onClick={(e) => {
@@ -1108,43 +1112,17 @@ const MyLecturesPage = () => {
                 </button>
               </div>
 
+
+
               <p className="text-xs font-semibold text-slate-500 text-center max-w-[280px]">
                 {t("scan_qr_desc", "Scan this QR Code to record your attendance for this session")}
               </p>
-              <button
-                onClick={() => setAttendanceScanStep("form")}
-                className="rounded-xl bg-blue-600 px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 active:scale-95"
-              >
-                {t("simulate_qr_scan", "Simulate QR Scan")}
-              </button>
             </div>
           ) : (
-            <div className="space-y-4 py-2 text-left">
+            <div className="py-4 space-y-4 text-left">
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  {t("full_name", "Full Name")}
-                </label>
-                <input
-                  type="text"
-                  className="input-field bg-slate-50/50 cursor-default dark:bg-slate-900/50"
-                  value={user?.name || ""}
-                  readOnly
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  {t("email_address", "Email Address")}
-                </label>
-                <input
-                  type="text"
-                  className="input-field bg-slate-50/50 cursor-default dark:bg-slate-900/50"
-                  value={user?.email || ""}
-                  readOnly
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  {t("lecture_session", "Lecture Session")}
+                  {t("lecture_title", "Lecture Title")}
                 </label>
                 <input
                   type="text"

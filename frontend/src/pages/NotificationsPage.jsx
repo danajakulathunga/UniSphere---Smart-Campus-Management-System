@@ -323,6 +323,7 @@ const NotificationsPage = () => {
         if (locLower.includes("block d")) return t("block_d", { defaultValue: "Block D" });
         if (locLower.includes("library")) return t("library", { defaultValue: "Library" });
         if (locLower.includes("gymnasium")) return t("gymnasium", { defaultValue: "Gymnasium" });
+        if (locLower.includes("main building")) return t("main_building", { defaultValue: "Main Building" });
         return loc;
       };
 
@@ -366,9 +367,17 @@ const NotificationsPage = () => {
           displayMessage = t("msg_ticket_created", { name: matchLegacy[1], category: getLocalizedCategory(matchLegacy[2]), defaultValue: message });
         }
       } else if (type === "TICKET_UPDATED") {
-        const match = message?.match(/Ticket #(.+?) was updated by (.+?)\./);
-        if (match) {
-          displayMessage = t("msg_ticket_updated", { id: match[1], name: match[2], defaultValue: message });
+        const matchIncidentUpdate = message?.match(/^(.+?) updated an incident ticket assigned to (.+?) at (.+?)\.$/);
+        const matchLegacy = message?.match(/Ticket #(.+?) was updated by (.+?)\./);
+        if (matchIncidentUpdate) {
+          displayMessage = t("msg_incident_ticket_updated", {
+            userName: matchIncidentUpdate[1],
+            category: getLocalizedCategory(matchIncidentUpdate[2]),
+            location: getLocalizedLocation(matchIncidentUpdate[3]),
+            defaultValue: message
+          });
+        } else if (matchLegacy) {
+          displayMessage = t("msg_ticket_updated", { id: matchLegacy[1], name: matchLegacy[2], defaultValue: message });
         }
       } else if (type === "TICKET_ASSIGNED") {
         const matchStandard = message?.match(/^Ticket #(.+?) is now in progress and assigned to (.+?)\.$/);
@@ -383,6 +392,7 @@ const NotificationsPage = () => {
           displayMessage = t("msg_ticket_assigned", { id: matchLegacy[1], defaultValue: message });
         }
       } else if (type === "TICKET_STATUS_UPDATED") {
+        const matchIncidentCancel = message?.match(/^(.+?) cancelled an incident ticket previously assigned to (.+?) at (.+?)\.$/);
         const matchStandardStatus = message?.match(/^Ticket #(.+?) status updated to (.+?) by (.+?)\.$/);
         const matchStandardResolved = message?.match(/^Ticket #(.+?) has been resolved by (.+?)\.$/);
         const matchStandardCancel = message?.match(/^(.+?) cancelled ticket #(.+?)\.$/);
@@ -390,7 +400,14 @@ const NotificationsPage = () => {
         const matchLegacyUser = message?.match(/Ticket #(.+?) status changed to (.+?)\./);
         const matchLegacyCancel = message?.match(/(.+?) cancelled ticket #(.+?)\./);
         
-        if (matchStandardStatus) {
+        if (matchIncidentCancel) {
+          displayMessage = t("msg_incident_ticket_cancelled", {
+            userName: matchIncidentCancel[1],
+            category: getLocalizedCategory(matchIncidentCancel[2]),
+            location: getLocalizedLocation(matchIncidentCancel[3]),
+            defaultValue: message
+          });
+        } else if (matchStandardStatus) {
           const statusVal = matchStandardStatus[2];
           const statusKey = statusVal.toLowerCase().replace(" ", "_");
           displayMessage = t("msg_ticket_status_updated_standard", {
