@@ -5,6 +5,7 @@ import {
   BookOpen,
   Search,
   Download,
+  ClipboardList,
   FileText,
   User as UserIcon,
   Clock,
@@ -37,8 +38,9 @@ import ShareSessionModal from "../components/ShareSessionModal";
 import CustomDropdown from "../components/CustomDropdown";
 import CustomDatePicker from "../components/CustomDatePicker";
 import { useAlert } from "../context/AlertContext";
-import { generateAttendancePDF } from "../utils/pdfGenerator";
+import { generateAttendancePDF, generateSessionsPDF } from "../utils/pdfGenerator";
 import { useTranslation } from "react-i18next";
+
 
 const MyLecturesPage = () => {
   const { t, i18n } = useTranslation();
@@ -63,7 +65,7 @@ const MyLecturesPage = () => {
   };
   const dateLocale = i18n.language?.startsWith("si") ? "si-LK" : i18n.language?.startsWith("ta") ? "ta-LK" : "en-US";
   const { user, logout } = useAuth();
-  const { searchQuery } = useSearch();
+  const { searchQuery, setSearchQuery } = useSearch();
   const { showAlert } = useAlert();
   const roles = normalizeRoles(user?.roles);
   const isLecturer = roles.includes("LECTURER");
@@ -260,6 +262,8 @@ const MyLecturesPage = () => {
     return {
       batch: params.get("batch") || "",
       date: params.get("date") || "",
+      status: "",
+      lecturer: "",
     };
   });
 
@@ -277,30 +281,16 @@ const MyLecturesPage = () => {
     }
   }, [location.search]);
 
-  React.useEffect(() => {
-    if (activeHighlightId && sessions.length > 0) {
-      const element = document.getElementById(`session-${activeHighlightId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    }
-  }, [activeHighlightId, sessions]);
-
-  const batchCounts = useMemo(() => {
-    const counts = { total: 0 };
-    const batches = ["Y1S1", "Y1S2", "Y2S1", "Y2S2", "Y3S1", "Y3S2", "Y4S1", "Y4S2"];
-    batches.forEach(b => {
-      counts[b] = 0;
-    });
-
-    sessions.forEach((s) => {
-      counts.total++;
-      if (s.assignedBatch && counts[s.assignedBatch] !== undefined) {
-        counts[s.assignedBatch]++;
-      }
-    });
-    return counts;
-  }, [sessions]);
+  // Derive the display status for a session
+  // Priority: Cancelled > Updated > Shared > Scheduled
+  // NOTE: "Update Required" is omitted — updateBooking always resets status to PENDING
+  // after the lecturer shares/re-shares, making PENDING an unreliable signal for that state.
+  const getSessionStatus = (session) => {
+    if (session.status === "CANCELLED") return "cancelled";
+    if (session.isUpdated) return "updated";
+    if (session.assignedBatch) return "shared";
+    return "scheduled";
+  };
 
   const filteredSessions = useMemo(() => {
     let filtered = sessions;
@@ -323,15 +313,101 @@ const MyLecturesPage = () => {
 
     // Date filter
     if (filters.date) {
-      filtered = filtered.filter((s) => s.bookingDate === filters.date);
+      const dateStr = Array.isArray(filters.date) ? filters.date.join("-") : filters.date;
+      filtered = filtered.filter((s) => {
+        const sDate = Array.isArray(s.bookingDate)
+          ? `${s.bookingDate[0]}-${String(s.bookingDate[1]).padStart(2,'0')}-${String(s.bookingDate[2]).padStart(2,'0')}`
+          : s.bookingDate;
+        return sDate === dateStr;
+      });
     }
 
+    // Status filter
+    if (filters.status) {
+      filtered = filtered.filter((s) => getSessionStatus(s) === filters.status);
+    }
+
+    // Lecturer filter (student only)
+    if (filters.lecturer && isUser) {
+      filtered = filtered.filter((s) => s.userName === filters.lecturer);
+    }
+
+    // Sort: newest createdAt DESC — only creation timestamp determines order
     return [...filtered].sort((a, b) => {
-      const dateA = new Date(a.bookingDate + "T" + a.startTime);
-      const dateB = new Date(b.bookingDate + "T" + b.startTime);
-      return dateB - dateA;
+      const parseCreatedAt = (v) => {
+        if (!v) return 0;
+        try {
+          // Spring Boot serializes LocalDateTime as [year, month, day, hour, min, sec, ns]
+          if (Array.isArray(v)) return new Date(v[0], v[1] - 1, v[2], v[3] || 0, v[4] || 0, v[5] || 0).getTime();
+          return new Date(v).getTime();
+        } catch { return 0; }
+      };
+      return parseCreatedAt(b.createdAt) - parseCreatedAt(a.createdAt);
     });
-  }, [sessions, searchQuery, filters]);
+  }, [sessions, searchQuery, filters, isUser]);
+
+  // Reset local filters if the highlighted session is not in the filtered list
+  React.useEffect(() => {
+    if (activeHighlightId && sessions.length > 0) {
+      const hasIt = filteredSessions.some((s) => String(s.id) === String(activeHighlightId));
+      if (!hasIt) {
+        if (searchQuery) {
+          setSearchQuery("");
+        }
+        setFilters({ batch: "", date: "", status: "", lecturer: "" });
+      }
+    }
+  }, [activeHighlightId, sessions, filteredSessions, searchQuery, setSearchQuery]);
+
+  React.useEffect(() => {
+    if (activeHighlightId && sessions.length > 0) {
+      const element = document.getElementById(`session-${activeHighlightId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [activeHighlightId, filteredSessions, sessions]);
+
+  const batchCounts = useMemo(() => {
+    const counts = { total: 0 };
+    const batches = ["Y1S1", "Y1S2", "Y2S1", "Y2S2", "Y3S1", "Y3S2", "Y4S1", "Y4S2"];
+    batches.forEach(b => {
+      counts[b] = 0;
+    });
+
+    sessions.forEach((s) => {
+      counts.total++;
+      if (s.assignedBatch && counts[s.assignedBatch] !== undefined) {
+        counts[s.assignedBatch]++;
+      }
+    });
+    return counts;
+  }, [sessions]);
+
+  // Live counts per status (computed from full unfiltered sessions list)
+  const statusCounts = useMemo(() => {
+    const counts = { total: 0, scheduled: 0, updated: 0, shared: 0, cancelled: 0 };
+    sessions.forEach(s => {
+      counts.total++;
+      const st = getSessionStatus(s);
+      if (counts[st] !== undefined) counts[st]++;
+    });
+    return counts;
+  }, [sessions]);
+
+  // Lecturer options for student filter (unique lecturers from sessions)
+  const lecturerOptions = useMemo(() => {
+    if (!isUser) return [];
+    const map = {};
+    sessions.forEach(s => {
+      if (s.userName) {
+        map[s.userName] = (map[s.userName] || 0) + 1;
+      }
+    });
+    return Object.entries(map)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, count]) => ({ value: name, label: name, count }));
+  }, [sessions, isUser]);
 
   const hasStarted = (booking) => {
     if (!booking) return false;
@@ -439,9 +515,9 @@ const MyLecturesPage = () => {
         {/* Filter Bar */}
         <div className="relative z-30 rounded-xl bg-white p-5 shadow-sm border border-slate-200 dark:bg-slate-900/50 dark:border-white/5">
           <div className="flex flex-col md:flex-row items-end justify-between gap-6">
-            <div className="flex-1 flex flex-col md:flex-row items-center gap-6">
+            <div className="flex-1 flex flex-col md:flex-row items-center gap-6 flex-wrap">
               {/* Batch Filter */}
-              <div className="w-full md:w-[240px]">
+              <div className="w-full md:w-[200px]">
                 <CustomDropdown
                   label={t("academic_batch", "Academic Batch")}
                   icon={BookOpen}
@@ -457,7 +533,7 @@ const MyLecturesPage = () => {
               </div>
 
               {/* Date Filter */}
-              <div className="w-full md:w-[240px]">
+              <div className="w-full md:w-[200px]">
                 <CustomDatePicker
                   label={t("session_date", "Session Date")}
                   value={filters.date}
@@ -466,13 +542,61 @@ const MyLecturesPage = () => {
                   }
                 />
               </div>
+
+              {/* Status Filter */}
+              <div className="w-full md:w-[180px]">
+                <CustomDropdown
+                  label={t("status_filter", "Status")}
+                  icon={Filter}
+                  options={[
+                    { value: "", label: t("all_statuses", "All Statuses"), count: statusCounts.total },
+                    { value: "scheduled", label: t("scheduled", "Scheduled"), count: statusCounts.scheduled },
+                    { value: "shared", label: t("shared", "Shared"), count: statusCounts.shared },
+                    { value: "updated", label: t("updated", "Updated"), count: statusCounts.updated },
+                    { value: "cancelled", label: t("cancelled", "Cancelled"), count: statusCounts.cancelled },
+                  ]}
+                  value={filters.status}
+                  onChange={(val) => setFilters((prev) => ({ ...prev, status: val }))}
+                />
+              </div>
+
+              {/* Lecturer Filter — Student only */}
+              {isUser && (
+                <div className="w-full md:w-[220px]">
+                  <CustomDropdown
+                    label={t("lecturer_filter_label", "Lecturer")}
+                    icon={UserIcon}
+                    options={[
+                      { value: "", label: t("all_lecturers", "All Lecturers"), count: statusCounts.total },
+                      ...lecturerOptions,
+                    ]}
+                    value={filters.lecturer}
+                    onChange={(val) => setFilters((prev) => ({ ...prev, lecturer: val }))}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Actions */}
             <div className="flex items-center gap-3">
-              {(filters.batch || filters.date) && (
+              {isLecturer && (
                 <button
-                  onClick={() => setFilters({ batch: "", date: "" })}
+                  onClick={() => generateSessionsPDF(filteredSessions, {
+                    status: filters.status,
+                    lecturer: filters.lecturer,
+                    batch: filters.batch,
+                    date: filters.date,
+                  })}
+                  disabled={filteredSessions.length === 0}
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-[13px] font-bold text-slate-600 transition hover:bg-emerald-600 hover:text-white dark:bg-white/5 dark:text-slate-400 dark:hover:bg-emerald-600 dark:hover:text-white shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  {t("download_pdf", "Download PDF")}
+                </button>
+              )}
+              {(filters.batch || filters.date || filters.status || filters.lecturer) && (
+                <button
+                  onClick={() => setFilters({ batch: "", date: "", status: "", lecturer: "" })}
                   className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-[13px] font-bold text-slate-600 transition hover:bg-slate-200 dark:bg-white/5 dark:text-slate-400 dark:hover:bg-white/10 shadow-sm active:scale-95"
                 >
                   <RefreshCw className="h-4 w-4" /> {t("reset", "Reset")}
@@ -507,92 +631,98 @@ const MyLecturesPage = () => {
               </thead>
               <tbody>
                 {!isLoading &&
-                  filteredSessions.map((session) => (
-                    <tr
-                      key={session.id}
-                      id={`session-${session.id}`}
-                      className={`group transition-all duration-500 hover:scale-[1.01] hover:relative hover:z-20 ${activeHighlightId != null && String(activeHighlightId) === String(session.id) ? "relative z-10 scale-[1.01]" : ""}`}
-                    >
-                      <td
-                        className={`px-4 py-2 bg-white/40 backdrop-blur-md border-y border-l rounded-l-xl transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-blue-600/5 dark:shadow-none ${activeHighlightId != null && String(activeHighlightId) === String(session.id) ? "border-y-blue-500 border-l-blue-500 bg-blue-50/50 dark:bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.2)]" : "border-slate-100 dark:bg-slate-900/40 dark:border-white/5 group-hover:border-y-blue-500 group-hover:border-l-blue-500"}`}
+                  filteredSessions.map((session) => {
+                    const isHighlighted = activeHighlightId != null && String(activeHighlightId) === String(session.id);
+                    return (
+                      <tr
+                        key={session.id}
+                        id={`session-${session.id}`}
+                        className={`group transition-all duration-700 relative hover:scale-[1.01] ${isHighlighted ? "bg-blue-50/80 dark:bg-blue-500/10 shadow-2xl shadow-blue-500/20 z-10 scale-[1.01]" : ""}`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 transition-transform duration-500 group-hover:scale-110">
-                            <BookOpen className="h-4 w-4" />
+                        <td
+                          className={`px-4 py-2 transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-blue-600/5 dark:shadow-none ${isHighlighted ? "bg-blue-50/80 dark:bg-blue-500/10 border-y-blue-500 border-l-blue-500 border-y border-l rounded-l-xl" : "bg-white/40 backdrop-blur-md border-y border-l rounded-l-xl border-slate-100 dark:bg-slate-900/40 dark:border-white/5 group-hover:border-y-blue-500 group-hover:border-l-blue-500"}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 transition-transform duration-500 group-hover:scale-110">
+                              <BookOpen className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                {session.purpose}
+                                {session.rating && (
+                                  <span className="inline-flex items-center gap-0.5 text-amber-500 text-xs font-black">
+                                    <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                                    {session.rating}
+                                  </span>
+                                )}
+                              </p>
+                              <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:bg-white/5 dark:text-slate-400">
+                                {session.assignedBatch
+                                  ? session.assignedBatch.split(",").map(b => b.trim()).join(" • ")
+                                  : t("general", "General")}
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                              {session.purpose}
-                              {session.rating && (
-                                <span className="inline-flex items-center gap-0.5 text-amber-500 text-xs font-black">
-                                  <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
-                                  {session.rating}
-                                </span>
-                              )}
-                            </p>
-                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:bg-white/5 dark:text-slate-400">
-                              {session.assignedBatch || t("general", "General")}
-                            </span>
+                        </td>
+                        <td
+                          className={`px-4 py-2 transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-blue-600/5 dark:shadow-none ${isHighlighted ? "bg-blue-50/80 dark:bg-blue-500/10 border-y border-y-blue-500" : "bg-white/40 backdrop-blur-md border-y border-slate-100 dark:bg-slate-900/40 dark:border-white/5 group-hover:border-y-blue-500"}`}
+                        >
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
+                              <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                              {formatDate(session.bookingDate, dateLocale)}
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400">
+                              <Clock className="h-3.5 w-3.5 text-slate-300" />
+                              {formatTime(session.startTime)} -{" "}
+                              {formatTime(session.endTime)}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td
-                        className={`px-4 py-2 bg-white/40 backdrop-blur-md border-y transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-blue-600/5 dark:shadow-none ${activeHighlightId != null && String(activeHighlightId) === String(session.id) ? "border-y-blue-500 bg-blue-50/50 dark:bg-blue-500/10" : "border-slate-100 dark:bg-slate-900/40 dark:border-white/5 group-hover:border-y-blue-500"}`}
-                      >
-                        <div className="space-y-0.5">
+                        </td>
+                        <td
+                          className={`px-4 py-2 transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-blue-600/5 dark:shadow-none ${isHighlighted ? "bg-blue-50/80 dark:bg-blue-500/10 border-y border-y-blue-500" : "bg-white/40 backdrop-blur-md border-y border-slate-100 dark:bg-slate-900/40 dark:border-white/5 group-hover:border-y-blue-500"}`}
+                        >
                           <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
-                            <Calendar className="h-3.5 w-3.5 text-blue-500" />
-                            {formatDate(session.bookingDate, dateLocale)}
+                            <MapPin className="h-3.5 w-3.5 text-slate-300" />
+                            {getLocalizedLocation(session.resourceName)}
+                            {(session.campusLocation || resources.find(r => r.id === session.resourceId)?.location) && 
+                              ` (${getLocalizedLocation(session.campusLocation || resources.find(r => r.id === session.resourceId)?.location)})`}
                           </div>
-                          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400">
-                            <Clock className="h-3.5 w-3.5 text-slate-300" />
-                            {formatTime(session.startTime)} -{" "}
-                            {formatTime(session.endTime)}
+                        </td>
+                        <td
+                          className={`px-4 py-2 transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-blue-600/5 dark:shadow-none ${isHighlighted ? "bg-blue-50/80 dark:bg-blue-500/10 border-y border-y-blue-500" : "bg-white/40 backdrop-blur-md border-y border-slate-100 dark:bg-slate-900/40 dark:border-white/5 group-hover:border-y-blue-500"}`}
+                        >
+                          <div className="flex flex-wrap gap-1.5">
+                            {(() => {
+                              const st = getSessionStatus(session);
+                              if (st === "cancelled") return (
+                                <span className="inline-flex items-center rounded-lg border px-2 py-1 text-[9px] font-bold uppercase tracking-widest bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-500/20">
+                                  {t("cancelled", "Cancelled")}
+                                </span>
+                              );
+                              if (st === "updated") return (
+                                <span className="inline-flex items-center rounded-lg border px-2 py-1 text-[9px] font-bold uppercase tracking-widest bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-500/20">
+                                  {t("updated", "Updated")}
+                                </span>
+                              );
+                              if (st === "shared") return (
+                                <span className="inline-flex items-center rounded-lg border px-2 py-1 text-[9px] font-bold uppercase tracking-widest bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-500/20">
+                                  {t("shared", "Shared")}
+                                </span>
+                              );
+                              return (
+                                <span className="inline-flex items-center rounded-lg border px-2 py-1 text-[9px] font-bold uppercase tracking-widest bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-500/20">
+                                  {t("scheduled", "Scheduled")}
+                                </span>
+                              );
+                            })()}
                           </div>
-                        </div>
-                      </td>
-                      <td
-                        className={`px-4 py-2 bg-white/40 backdrop-blur-md border-y transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-blue-600/5 dark:shadow-none ${activeHighlightId != null && String(activeHighlightId) === String(session.id) ? "border-y-blue-500 bg-blue-50/50 dark:bg-blue-500/10" : "border-slate-100 dark:bg-slate-900/40 dark:border-white/5 group-hover:border-y-blue-500"}`}
-                      >
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
-                          <MapPin className="h-3.5 w-3.5 text-slate-300" />
-                          {getLocalizedLocation(session.resourceName)}
-                          {(session.campusLocation || resources.find(r => r.id === session.resourceId)?.location) && 
-                            ` (${getLocalizedLocation(session.campusLocation || resources.find(r => r.id === session.resourceId)?.location)})`}
-                        </div>
-                      </td>
-                      <td
-                        className={`px-4 py-2 bg-white/40 backdrop-blur-md border-y transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-blue-600/5 dark:shadow-none ${activeHighlightId != null && String(activeHighlightId) === String(session.id) ? "border-y-blue-500 bg-blue-50/50 dark:bg-blue-500/10" : "border-slate-100 dark:bg-slate-900/40 dark:border-white/5 group-hover:border-y-blue-500"}`}
-                      >
-                        <div className="flex flex-wrap gap-1.5">
-                          {session.status === "CANCELLED" ||
-                          (session.sessionDetails &&
-                            session.sessionDetails
-                              .toLowerCase()
-                              .includes("canceled")) ? (
-                            <span className="inline-flex items-center rounded-lg border px-2 py-1 text-[9px] font-bold uppercase tracking-widest bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-500/20">
-                              {t("cancelled", "Canceled")}
-                            </span>
-                          ) : session.isUpdated ||
-                            (session.sessionDetails &&
-                              session.sessionDetails
-                                .toLowerCase()
-                                .includes("updated")) ? (
-                            <span className="inline-flex items-center rounded-lg border px-2 py-1 text-[9px] font-bold uppercase tracking-widest bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-500/20">
-                              {t("updated", "Updated")}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-lg border px-2 py-1 text-[9px] font-bold uppercase tracking-widest bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-500/20">
-                              {t("scheduled", "Scheduled")}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td
-                        className={`px-4 py-2 bg-white/40 backdrop-blur-md border-y border-r rounded-r-xl transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-blue-600/5 dark:shadow-none relative w-[180px] min-w-[180px] ${activeHighlightId != null && String(activeHighlightId) === String(session.id) ? "border-y-blue-500 border-r-blue-500 bg-blue-50/50 dark:bg-blue-500/10 shadow-[0_0_20px_rgba(59,130,246,0.2)]" : "border-slate-100 dark:bg-slate-900/40 dark:border-white/5 group-hover:border-y-blue-500 group-hover:border-r-blue-500"}`}
-                      >
-                        <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 absolute inset-0 px-1 gap-2">
-                          {isLecturer ? (
+                        </td>
+                        <td
+                          className={`px-4 py-2 transition-all duration-500 shadow-sm group-hover:shadow-xl group-hover:shadow-blue-600/5 dark:shadow-none relative w-[180px] min-w-[180px] ${isHighlighted ? "bg-blue-50/80 dark:bg-blue-500/10 border-y border-r rounded-r-xl border-y-blue-500 border-r-blue-500" : "bg-white/40 backdrop-blur-md border-y border-r rounded-r-xl border-slate-100 dark:bg-slate-900/40 dark:border-white/5 group-hover:border-y-blue-500 group-hover:border-r-blue-500"}`}
+                        >
+                          <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 absolute inset-0 px-1 gap-2">
+                            {isLecturer ? (
                             <>
                               {session.userId === user?.id &&
                               !hasStarted(session) &&
@@ -717,7 +847,8 @@ const MyLecturesPage = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

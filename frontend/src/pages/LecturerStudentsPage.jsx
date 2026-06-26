@@ -34,7 +34,7 @@ import {
   useQuery,
   keepPreviousData,
 } from "@tanstack/react-query";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 const statusStyles = {
@@ -92,13 +92,14 @@ const LecturerStudentsPage = () => {
   };
   const dateLocale = i18n.language === "si" ? "si-LK" : i18n.language === "ta" ? "ta-LK" : "en-US";
   const { user, logout } = useAuth();
-  const { searchQuery } = useSearch(); // Still keeping search logic in case needed in future, but removing UI
+  const { searchQuery, setSearchQuery } = useSearch(); // Still keeping search logic in case needed in future, but removing UI
   const [batchFilter, setBatchFilter] = useState("ALL");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [highlightId, setHighlightId] = useState(null);
   const highlightedRef = useRef(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const primaryRole = getPrimaryRole(user?.roles);
   const accent = getRoleAccent(primaryRole);
@@ -120,7 +121,7 @@ const LecturerStudentsPage = () => {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["lecturer-students", searchQuery],
+    queryKey: ["lecturer-students", searchQuery, highlightId],
     queryFn: async () => {
       const params = {
         search: searchQuery || "",
@@ -180,10 +181,25 @@ const LecturerStudentsPage = () => {
     const id = params.get("highlight");
     if (id) {
       setHighlightId(id);
+      
+      // Clean query params
+      navigate(location.pathname, { replace: true });
+
       const timer = setTimeout(() => setHighlightId(null), 5000);
       return () => clearTimeout(timer);
     }
-  }, [location.search]);
+  }, [location.search, navigate, location.pathname]);
+
+  // Reset batch filter & search query if highlighted student is not found
+  useEffect(() => {
+    if (highlightId && allStudents.length > 0) {
+      const hasIt = students.some((s) => String(s.id) === String(highlightId));
+      if (!hasIt && (batchFilter !== "ALL" || searchQuery)) {
+        setBatchFilter("ALL");
+        setSearchQuery("");
+      }
+    }
+  }, [highlightId, allStudents, students, batchFilter, searchQuery, setSearchQuery]);
 
   useEffect(() => {
     if (highlightId && highlightedRef.current) {
@@ -273,17 +289,17 @@ const LecturerStudentsPage = () => {
                 return (
                   <tr
                     key={s.id}
-                    ref={highlightId === s.id ? highlightedRef : null}
-                    className={`group transition-all duration-500 bg-white dark:bg-slate-900/50 relative ${
-                      highlightId === s.id
-                        ? "z-20 scale-[1.01] shadow-2xl shadow-blue-500/20"
-                        : "hover:scale-[1.005]"
+                    ref={String(highlightId) === String(s.id) ? highlightedRef : null}
+                    className={`group transition-all duration-700 relative hover:scale-[1.005] ${
+                      String(highlightId) === String(s.id)
+                        ? "bg-blue-50/80 dark:bg-blue-500/10 shadow-2xl shadow-blue-500/20 z-10 scale-[1.01]"
+                        : "bg-white dark:bg-slate-900/50"
                     }`}
                   >
                     <td
                       className={`px-4 py-3 rounded-l-xl border-y border-l transition-all duration-500 ${
-                        highlightId === s.id
-                          ? "border-blue-500 bg-blue-50/30 dark:bg-blue-500/5"
+                        String(highlightId) === String(s.id)
+                          ? "border-blue-500"
                           : "border-slate-100 dark:border-white/5 group-hover:border-blue-500"
                       }`}
                     >
@@ -311,8 +327,8 @@ const LecturerStudentsPage = () => {
                     </td>
                     <td
                       className={`px-4 py-3 border-y transition-all duration-500 ${
-                        highlightId === s.id
-                          ? "border-blue-500 bg-blue-50/30 dark:bg-blue-500/5"
+                        String(highlightId) === String(s.id)
+                          ? "border-blue-500"
                           : "border-slate-100 dark:border-white/5 group-hover:border-blue-500"
                       }`}
                     >
@@ -327,8 +343,8 @@ const LecturerStudentsPage = () => {
                     </td>
                     <td
                       className={`px-4 py-3 border-y transition-all duration-500 ${
-                        highlightId === s.id
-                          ? "border-blue-500 bg-blue-50/30 dark:bg-blue-500/5"
+                        String(highlightId) === String(s.id)
+                          ? "border-blue-500"
                           : "border-slate-100 dark:border-white/5 group-hover:border-blue-500"
                       }`}
                     >
@@ -341,8 +357,8 @@ const LecturerStudentsPage = () => {
                     </td>
                     <td
                       className={`px-4 py-3 border-y transition-all duration-500 ${
-                        highlightId === s.id
-                          ? "border-blue-500 bg-blue-50/30 dark:bg-blue-500/5"
+                        String(highlightId) === String(s.id)
+                          ? "border-blue-500"
                           : "border-slate-100 dark:border-white/5 group-hover:border-blue-500"
                       }`}
                     >
@@ -354,8 +370,8 @@ const LecturerStudentsPage = () => {
                     </td>
                     <td
                       className={`px-4 py-3 rounded-r-xl border-y border-r transition-all duration-500 relative w-[120px] min-w-[120px] ${
-                        highlightId === s.id
-                          ? "border-blue-500 bg-blue-50/30 dark:bg-blue-500/5"
+                        String(highlightId) === String(s.id)
+                          ? "border-blue-500"
                           : "border-slate-100 dark:border-white/5 group-hover:border-blue-500"
                       }`}
                     >

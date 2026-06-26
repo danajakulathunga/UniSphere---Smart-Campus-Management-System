@@ -356,4 +356,86 @@ export const generateAttendancePDF = (session, attendanceList, summary) => {
   doc.save(`attendance_report_${session.purpose.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`);
 };
 
+export const generateSessionsPDF = (sessions, filterContext = {}) => {
+  const doc = new jsPDF();
 
+  // Header
+  doc.setFontSize(20);
+  doc.setTextColor(37, 99, 235);
+  doc.text("UniSphere Smart Campus Management System", 14, 22);
+
+  doc.setFontSize(14);
+  doc.setTextColor(100);
+  doc.text("Lecture Sessions Schedule Report", 14, 32);
+
+  doc.setFontSize(10);
+  doc.setTextColor(60);
+  let yPos = 40;
+  doc.text(`Total Sessions: ${sessions.length}`, 14, yPos);
+  yPos += 6;
+  if (filterContext.status) {
+    doc.text(`Status Filter: ${filterContext.status}`, 14, yPos);
+    yPos += 6;
+  }
+  if (filterContext.lecturer) {
+    doc.text(`Lecturer Filter: ${filterContext.lecturer}`, 14, yPos);
+    yPos += 6;
+  }
+  if (filterContext.batch) {
+    doc.text(`Batch Filter: ${filterContext.batch}`, 14, yPos);
+    yPos += 6;
+  }
+  if (filterContext.date) {
+    doc.text(`Date Filter: ${filterContext.date}`, 14, yPos);
+    yPos += 6;
+  }
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, yPos);
+
+  const startY = yPos + 8;
+
+  const tableColumn = ["#", "Title", "Lecturer", "Date", "Time", "Location", "Batch", "Status"];
+  const tableRows = sessions.map((s, index) => {
+    const dateStr = Array.isArray(s.bookingDate)
+      ? `${s.bookingDate[0]}-${String(s.bookingDate[1]).padStart(2,'0')}-${String(s.bookingDate[2]).padStart(2,'0')}`
+      : (s.bookingDate || "");
+    const startStr = Array.isArray(s.startTime)
+      ? `${String(s.startTime[0]).padStart(2,'0')}:${String(s.startTime[1]).padStart(2,'0')}`
+      : (s.startTime ? s.startTime.substring(0, 5) : "");
+    const endStr = Array.isArray(s.endTime)
+      ? `${String(s.endTime[0]).padStart(2,'0')}:${String(s.endTime[1]).padStart(2,'0')}`
+      : (s.endTime ? s.endTime.substring(0, 5) : "");
+
+    let status = "Scheduled";
+    if (s.status === "CANCELLED") status = "Cancelled";
+    else if (s.isUpdated) status = "Updated";
+
+    return [
+      index + 1,
+      s.purpose || "",
+      s.userName || "",
+      dateStr,
+      startStr && endStr ? `${startStr} - ${endStr}` : "",
+      s.resourceName || "",
+      s.assignedBatch || "General",
+      status,
+    ];
+  });
+
+  autoTable(doc, {
+    head: [tableColumn],
+    body: tableRows,
+    startY,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [37, 99, 235],
+      textColor: [255, 255, 255],
+      fontSize: 9,
+      fontStyle: 'bold',
+    },
+    bodyStyles: { fontSize: 8 },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    columnStyles: { 0: { cellWidth: 8 } },
+  });
+
+  doc.save(`sessions_schedule_${new Date().getTime()}.pdf`);
+};

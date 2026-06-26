@@ -237,6 +237,65 @@ const NotificationsPage = () => {
       }
     }
 
+    // Role-based routing for staff/student user joined notifications
+    const targetUserId = item.referenceId || item.userId || item.studentId || item.staffId;
+    if (item.referenceType === "USER" || item.type === "USER_REGISTERED" || item.type === "STUDENT_BATCH_MATCH" || (item.title && item.title.toLowerCase().includes("joined"))) {
+      const isStaffJoined = 
+        item.message?.toLowerCase().includes("lecturer") || 
+        item.message?.toLowerCase().includes("technician") || 
+        item.title?.toLowerCase().includes("staff") ||
+        item.type?.includes("STAFF") ||
+        item.type?.includes("LECTURER") ||
+        item.type?.includes("TECHNICIAN");
+
+      if (roles.includes("ADMIN")) {
+        if (isStaffJoined) {
+          navigate(`/staff?highlight=${targetUserId}`);
+          return;
+        } else {
+          navigate(`/users?highlight=${targetUserId}`);
+          return;
+        }
+      } else if (roles.includes("LECTURER")) {
+        navigate(`/lecturer/students?highlight=${targetUserId}`);
+        return;
+      }
+    }
+
+    // Generic path maps using all possible database IDs
+    if (item.referenceType || item.type) {
+      const type = item.referenceType || "";
+      const titleLower = (item.title || "").toLowerCase();
+      const typeLower = (item.type || "").toLowerCase();
+
+      if (type === "BOOKING" || typeLower.includes("booking")) {
+        const targetId = item.bookingId || item.referenceId;
+        navigate(`/bookings?highlight=${targetId}`);
+        return;
+      }
+      if (type === "TICKET" || typeLower.includes("ticket")) {
+        const targetId = item.ticketId || item.referenceId;
+        navigate(`/tickets?highlight=${targetId}`);
+        return;
+      }
+      if (type === "RESOURCE" || type === "FACILITY" || typeLower.includes("facility") || typeLower.includes("resource")) {
+        const targetId = item.facilityId || item.referenceId;
+        navigate(`/resources?highlight=${targetId}`);
+        return;
+      }
+      if (type === "LECTURE" || typeLower.includes("lecture") || typeLower.includes("attendance")) {
+        const targetId = item.lectureSessionId || item.bookingId || item.referenceId;
+        navigate(`/my-lectures?highlight=${targetId}`);
+        return;
+      }
+      if (type === "ANNOUNCEMENT" || typeLower.includes("announcement")) {
+        const targetId = item.announcementId || item.referenceId;
+        navigate(`/announcements?highlight=${targetId}`);
+        return;
+      }
+    }
+
+    // Fallback path mapping if referenceType mapping is available
     if (item.referenceType && item.referenceId) {
       const pathMap = {
         BOOKING: "/bookings",

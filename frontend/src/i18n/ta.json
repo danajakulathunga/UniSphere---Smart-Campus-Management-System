@@ -887,5 +887,18 @@
   "Incident Ticket Updated": "சம்பவ டிக்கெட் புதுப்பிக்கப்பட்டது",
   "Incident Ticket Cancelled": "சம்பவ டிக்கெட் ரத்து செய்யப்பட்டது",
   "msg_incident_ticket_updated": "{{userName}} அவர்கள் {{location}} இல் {{category}} பிரிவிற்கு ஒதுக்கப்பட்ட சம்பவ டிக்கெட்டை புதுப்பித்துள்ளார்.",
-  "msg_incident_ticket_cancelled": "{{userName}} அவர்கள் {{location}} இல் {{category}} பிரிவிற்கு ஒதுக்கப்பட்டிருந்த சம்பவ டிக்கெட்டை ரத்து செய்துள்ளார்."
+  "msg_incident_ticket_cancelled": "{{userName}} அவர்கள் {{location}} இல் {{category}} பிரிவிற்கு ஒதுக்கப்பட்டிருந்த சம்பவ டிக்கெட்டை ரத்து செய்துள்ளார்.",
+  "needs_update": "புதுப்பிக்க வேண்டும்",
+  "shared": "பகிரப்பட்டது",
+  "update_required": "புதுப்பிக்க வேண்டும்",
+  "all_statuses": "அனைத்து நிலைகள்",
+  "status_filter": "நிலை",
+  "all_lecturers": "அனைத்து விரிவுரையாளர்கள்",
+  "lecturer_filter_label": "விரிவுரையாளர்",
+  "download_schedule": "கால அட்டவணையை பதிவிறக்கு",
+  "sessions_schedule_report": "வகுப்பு கால அட்டவணை அறிக்கை",
+  "clear_all": "அனைத்தையும் அழி",
+  "select_batches_placeholder": "ஒன்று அல்லது அதிகமான தொகுதிகளைத் தேர்ந்தெடுக்கவும்…",
+  "batches_selected": "{{count}} தொகுதி(கள்) தேர்ந்தெடுக்கப்பட்டது",
+  "no_batches_available": "உங்கள் சுயவிவரத்திற்கு எந்த தொகுதியும் ஒதுக்கப்படவில்லை."
 }

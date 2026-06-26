@@ -887,7 +887,20 @@
   "Incident Ticket Updated": "ගැටළු වාර්තා කිරීම් ටිකට්පත යාවත්කාලීන කරන ලදී",
   "Incident Ticket Cancelled": "ගැටළු වාර්තා කිරීම් ටිකට්පත අවලංගු කරන ලදී",
   "msg_incident_ticket_updated": "{{userName}} විසින් {{location}} හි {{category}} සඳහා පවරා ඇති ගැටළු වාර්තා කිරීම් ටිකට්පතක් යාවත්කාලීන කරන ලදී.",
-  "msg_incident_ticket_cancelled": "{{userName}} විසින් {{location}} හි {{category}} සඳහා මින් පෙර පවරා තිබූ ගැටළු වාර්තා කිරීම් ටිකට්පතක් අවලංගු කරන ලදී."
+  "msg_incident_ticket_cancelled": "{{userName}} විසින් {{location}} හි {{category}} සඳහා මින් පෙර පවරා තිබූ ගැටළු වාර්තා කිරීම් ටිකට්පතක් අවලංගු කරන ලදී.",
+  "needs_update": "යාවත්කාලීන කිරීම අවශ්‍යයි",
+  "shared": "බෙදාගන්නා ලදී",
+  "update_required": "යාවත්කාලීන කිරීම අවශ්‍යයි",
+  "all_statuses": "සියලු තත්ව",
+  "status_filter": "තත්වය",
+  "all_lecturers": "සියලු කථිකාචාර්යවරුන්",
+  "lecturer_filter_label": "කථිකාචාර්ය",
+  "download_schedule": "කාලසටහන බාගත කරන්න",
+  "sessions_schedule_report": "දේශන සැසි කාලසටහන් වාර්තාව",
+  "clear_all": "සියල්ල මකන්න",
+  "select_batches_placeholder": "එක් හෝ එකකට වැඩි බැච් තෝරන්න…",
+  "batches_selected": "බැච් {{count}} ක් තෝරා ගත්ත",
+  "no_batches_available": "ඔබේ ගිණුමට පවරා ඇති බැච් නොමැත."
 }
 
 

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
   X,
@@ -45,7 +45,8 @@ import { useTranslation } from "react-i18next";
 
 const TicketsPage = () => {
   const { user, logout } = useAuth();
-  const { searchQuery } = useSearch();
+  const { searchQuery, setSearchQuery } = useSearch();
+  const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const getLocalizedLocation = (loc) => {
     if (!loc) return "";
@@ -447,12 +448,36 @@ const TicketsPage = () => {
     const id = params.get("highlight");
     if (id) {
       setHighlightId(id);
+      navigate(location.pathname, { replace: true });
       const timer = setTimeout(() => {
         setHighlightId(null);
-      }, 4000);
+      }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [location.search]);
+  }, [location.search, navigate, location.pathname]);
+
+  useEffect(() => {
+    const findHighlightedTicket = async () => {
+      if (!highlightId) return;
+      try {
+        const res = await api.get(getEndpoint(), { params: { size: 1000 } });
+        const allTickets = res.data?.content || [];
+        const index = allTickets.findIndex((t) => String(t.id) === String(highlightId));
+        if (index !== -1) {
+          if (searchQuery) setSearchQuery("");
+          if (filters.status !== "" || filters.priority !== "" || filters.assignedTechnicianId !== "") {
+            setFilters({ status: "", priority: "", assignedTechnicianId: "" });
+          }
+          const targetPage = Math.floor(index / pageSize);
+          setPage(targetPage);
+        }
+      } catch (err) {
+        console.error("Failed to find highlighted ticket index:", err);
+      }
+    };
+
+    findHighlightedTicket();
+  }, [highlightId]);
 
   useEffect(() => {
     if (highlightId && highlightedRef.current) {
@@ -811,7 +836,7 @@ const TicketsPage = () => {
             <div
               key={ticket.id}
               ref={highlightId === ticket.id ? highlightedRef : null}
-              className={`animate-reveal rounded-xl transition-all duration-500 ${highlightId === ticket.id ? "ring-4 ring-blue-500/20 shadow-2xl scale-[1.02] bg-blue-50/50 dark:bg-blue-900/20" : ""}`}
+              className={`animate-reveal rounded-xl border transition-all duration-500 ${highlightId === ticket.id ? "border-blue-500 shadow-2xl shadow-blue-500/20 z-10 scale-[1.01] bg-blue-50/80 dark:bg-blue-500/10" : "border-transparent"}`}
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <TicketCard

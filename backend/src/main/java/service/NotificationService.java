@@ -276,6 +276,54 @@ public class NotificationService {
         createForParticipants(recipients, title, message, type, referenceType, referenceId, excludedUserIds, lectureSessionId, bookingId, attendanceId, userRole);
     }
 
+    /**
+     * Send notifications to students across multiple comma-separated batch tags.
+     * Duplicate notifications to the same student (if they match multiple batches) are prevented
+     * via the alreadyNotified set.
+     */
+    public void createForMultiBatch(String batchTagsCsv,
+                                    String title,
+                                    String message,
+                                    NotificationType type,
+                                    String referenceType,
+                                    String referenceId,
+                                    Set<String> excludedUserIds,
+                                    String lectureSessionId,
+                                    String bookingId,
+                                    String attendanceId,
+                                    String userRole) {
+        if (batchTagsCsv == null || batchTagsCsv.isBlank()) return;
+
+        Set<String> excludeSet = excludedUserIds == null ? Set.of() : excludedUserIds;
+        Set<String> alreadyNotified = new HashSet<>();
+
+        for (String rawTag : batchTagsCsv.split(",")) {
+            String batchTag = rawTag.trim();
+            if (batchTag.isEmpty() || !batchTag.startsWith("Y") || !batchTag.contains("S")) continue;
+
+            try {
+                String yearNum = batchTag.substring(1, batchTag.indexOf('S'));
+                String semNum  = batchTag.substring(batchTag.indexOf('S') + 1);
+                String yearFull = yearNum + (yearNum.equals("1") ? "st Year" : yearNum.equals("2") ? "nd Year" : yearNum.equals("3") ? "rd Year" : "th Year");
+                String semFull  = "Semester " + semNum;
+
+                List<User> recipients = userRepository.findByYearAndSemester(yearFull, semFull);
+                logger.info("createForMultiBatch: batch={}, recipients={}", batchTag, recipients.size());
+
+                for (User recipient : recipients) {
+                    if (recipient == null || recipient.getId() == null || recipient.getId().isBlank()) continue;
+                    if (excludeSet.contains(recipient.getId())) continue;
+                    if (alreadyNotified.contains(recipient.getId())) continue; // prevent cross-batch duplicates
+                    alreadyNotified.add(recipient.getId());
+                    createForUser(recipient.getId(), getPrimaryRole(recipient), title, message, type,
+                            referenceType, referenceId, lectureSessionId, bookingId, attendanceId, userRole);
+                }
+            } catch (Exception e) {
+                logger.error("createForMultiBatch: error processing batch {}: {}", batchTag, e.getMessage());
+            }
+        }
+    }
+
     public Page<Notification> getUserNotifications(String userId, Pageable pageable) {
         return notificationRepository.findAllByUserIdOrderByCreatedAtDesc(userId, pageable);
     }

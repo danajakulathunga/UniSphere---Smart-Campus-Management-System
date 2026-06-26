@@ -175,7 +175,7 @@ public class BookingService {
         booking.setAssignedBatch(request.getAssignedBatch());
         booking.setSessionDetails(request.getSessionDetails());
         booking.setCapacity(request.getCapacity());
-        booking.setIsUpdated(true);
+        booking.setIsUpdated(isBatchUpdate); // false on first share, true on re-share (update)
         if (booking.getQrCode() == null) {
             booking.setQrCode(java.util.UUID.randomUUID().toString());
         }
@@ -248,7 +248,7 @@ public class BookingService {
                                       " scheduled on **" + date + "** at **" + time + "** in **" + location + "**.";
             }
 
-            notificationService.createForBatch(
+            notificationService.createForMultiBatch(
                     saved.getAssignedBatch(),
                     title,
                     notificationMessage,
@@ -262,7 +262,7 @@ public class BookingService {
                     "USER"         // userRole context (Student side)
             );
 
-            logger.info("LECTURE notification triggered for batch: {}", saved.getAssignedBatch());
+            logger.info("LECTURE notification triggered for batches: {}", saved.getAssignedBatch());
             System.out.println("Notification created for batch: " + saved.getAssignedBatch() + " (Booking: "
                     + saved.getId() + ")");
         }
@@ -514,7 +514,7 @@ public class BookingService {
             String cancelMessage = "Lecturer " + lecturerName + " cancelled the lecture session " + lectureName +
                                    " scheduled on **" + date + "** at **" + time + "** in **" + location + "**.";
 
-            notificationService.createForBatch(
+            notificationService.createForMultiBatch(
                     booking.getAssignedBatch(),
                     "Lecture Canceled",
                     cancelMessage,
@@ -758,11 +758,13 @@ public class BookingService {
             String yearNum = year.replaceAll("[^0-9]", "");
             String semNum = semester.replaceAll("[^0-9]", "");
             String batchTag = "Y" + yearNum + "S" + semNum;
-            query.addCriteria(Criteria.where("assignedBatch").is(batchTag));
+            // Match batchTag within a comma-separated assignedBatch field (e.g. "Y2S1" or "Y2S1,Y2S2")
+            String batchRegex = "(^|,)" + batchTag + "(,|$)";
+            query.addCriteria(Criteria.where("assignedBatch").regex(batchRegex));
         }
 
-        // Sort by bookingDate and startTime descending
-        query.with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "bookingDate", "startTime"));
+        // Sort by creation timestamp descending — newest session always appears first
+        query.with(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
 
         List<Booking> sessions = mongoTemplate.find(query, Booking.class);
         boolean anyUpdated = false;

@@ -887,7 +887,20 @@
   "Incident Ticket Updated": "Incident Ticket Updated",
   "Incident Ticket Cancelled": "Incident Ticket Cancelled",
   "msg_incident_ticket_updated": "{{userName}} updated an incident ticket assigned to {{category}} at {{location}}.",
-  "msg_incident_ticket_cancelled": "{{userName}} cancelled an incident ticket previously assigned to {{category}} at {{location}}."
+  "msg_incident_ticket_cancelled": "{{userName}} cancelled an incident ticket previously assigned to {{category}} at {{location}}.",
+  "needs_update": "Needs Update",
+  "shared": "Shared",
+  "update_required": "Update Required",
+  "all_statuses": "All Statuses",
+  "status_filter": "Status",
+  "all_lecturers": "All Lecturers",
+  "lecturer_filter_label": "Lecturer",
+  "download_schedule": "Download PDF",
+  "sessions_schedule_report": "Lecture Sessions Schedule Report",
+  "clear_all": "Clear All",
+  "select_batches_placeholder": "Select one or more batches…",
+  "batches_selected": "{{count}} batch(es) selected",
+  "no_batches_available": "No batches assigned to your profile."
 }
 
 

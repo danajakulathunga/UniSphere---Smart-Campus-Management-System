@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Users,
   Search,
@@ -52,6 +52,7 @@ const UsersPage = () => {
   const { showAlert } = useAlert();
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language === "si" ? "si-LK" : i18n.language === "ta" ? "ta-LK" : "en-US";
 
@@ -74,13 +75,13 @@ const UsersPage = () => {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["admin-users", searchQuery],
+    queryKey: ["admin-users", searchQuery, highlightId],
     queryFn: async () => {
       const params = {
         search: searchQuery || "",
         roles: "USER", // Strictly students
         page: 0,
-        size: 100,
+        size: highlightId ? 1000 : 100,
       };
       const res = await api.get("/admin/users", { params });
       return res.data;
@@ -100,12 +101,26 @@ const UsersPage = () => {
     const id = params.get("highlight");
     if (id) {
       setHighlightId(id);
+      
+      // Clean query params
+      navigate(location.pathname, { replace: true });
+
       const timer = setTimeout(() => {
         setHighlightId(null);
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [location.search]);
+  }, [location.search, navigate, location.pathname]);
+
+  // Reset search query if the highlighted record is not found in the filtered list
+  useEffect(() => {
+    if (highlightId && responseData) {
+      const hasIt = data.some((u) => String(u.id) === String(highlightId));
+      if (!hasIt && searchQuery) {
+        setSearchQuery("");
+      }
+    }
+  }, [highlightId, data, responseData, searchQuery, setSearchQuery]);
 
   useEffect(() => {
     if (highlightId && highlightedRowRef.current) {
