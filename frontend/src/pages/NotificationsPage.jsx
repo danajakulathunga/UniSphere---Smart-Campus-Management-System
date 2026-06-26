@@ -237,6 +237,65 @@ const NotificationsPage = () => {
       }
     }
 
+    // Role-based routing for staff/student user joined notifications
+    const targetUserId = item.referenceId || item.userId || item.studentId || item.staffId;
+    if (item.referenceType === "USER" || item.type === "USER_REGISTERED" || item.type === "STUDENT_BATCH_MATCH" || (item.title && item.title.toLowerCase().includes("joined"))) {
+      const isStaffJoined = 
+        item.message?.toLowerCase().includes("lecturer") || 
+        item.message?.toLowerCase().includes("technician") || 
+        item.title?.toLowerCase().includes("staff") ||
+        item.type?.includes("STAFF") ||
+        item.type?.includes("LECTURER") ||
+        item.type?.includes("TECHNICIAN");
+
+      if (roles.includes("ADMIN")) {
+        if (isStaffJoined) {
+          navigate(`/staff?highlight=${targetUserId}`);
+          return;
+        } else {
+          navigate(`/users?highlight=${targetUserId}`);
+          return;
+        }
+      } else if (roles.includes("LECTURER")) {
+        navigate(`/lecturer/students?highlight=${targetUserId}`);
+        return;
+      }
+    }
+
+    // Generic path maps using all possible database IDs
+    if (item.referenceType || item.type) {
+      const type = item.referenceType || "";
+      const titleLower = (item.title || "").toLowerCase();
+      const typeLower = (item.type || "").toLowerCase();
+
+      if (type === "BOOKING" || typeLower.includes("booking")) {
+        const targetId = item.bookingId || item.referenceId;
+        navigate(`/bookings?highlight=${targetId}`);
+        return;
+      }
+      if (type === "TICKET" || typeLower.includes("ticket")) {
+        const targetId = item.ticketId || item.referenceId;
+        navigate(`/tickets?highlight=${targetId}`);
+        return;
+      }
+      if (type === "RESOURCE" || type === "FACILITY" || typeLower.includes("facility") || typeLower.includes("resource")) {
+        const targetId = item.facilityId || item.referenceId;
+        navigate(`/resources?highlight=${targetId}`);
+        return;
+      }
+      if (type === "LECTURE" || typeLower.includes("lecture") || typeLower.includes("attendance")) {
+        const targetId = item.lectureSessionId || item.bookingId || item.referenceId;
+        navigate(`/my-lectures?highlight=${targetId}`);
+        return;
+      }
+      if (type === "ANNOUNCEMENT" || typeLower.includes("announcement")) {
+        const targetId = item.announcementId || item.referenceId;
+        navigate(`/announcements?highlight=${targetId}`);
+        return;
+      }
+    }
+
+    // Fallback path mapping if referenceType mapping is available
     if (item.referenceType && item.referenceId) {
       const pathMap = {
         BOOKING: "/bookings",
@@ -323,6 +382,7 @@ const NotificationsPage = () => {
         if (locLower.includes("block d")) return t("block_d", { defaultValue: "Block D" });
         if (locLower.includes("library")) return t("library", { defaultValue: "Library" });
         if (locLower.includes("gymnasium")) return t("gymnasium", { defaultValue: "Gymnasium" });
+        if (locLower.includes("main building")) return t("main_building", { defaultValue: "Main Building" });
         return loc;
       };
 
@@ -366,9 +426,17 @@ const NotificationsPage = () => {
           displayMessage = t("msg_ticket_created", { name: matchLegacy[1], category: getLocalizedCategory(matchLegacy[2]), defaultValue: message });
         }
       } else if (type === "TICKET_UPDATED") {
-        const match = message?.match(/Ticket #(.+?) was updated by (.+?)\./);
-        if (match) {
-          displayMessage = t("msg_ticket_updated", { id: match[1], name: match[2], defaultValue: message });
+        const matchIncidentUpdate = message?.match(/^(.+?) updated an incident ticket assigned to (.+?) at (.+?)\.$/);
+        const matchLegacy = message?.match(/Ticket #(.+?) was updated by (.+?)\./);
+        if (matchIncidentUpdate) {
+          displayMessage = t("msg_incident_ticket_updated", {
+            userName: matchIncidentUpdate[1],
+            category: getLocalizedCategory(matchIncidentUpdate[2]),
+            location: getLocalizedLocation(matchIncidentUpdate[3]),
+            defaultValue: message
+          });
+        } else if (matchLegacy) {
+          displayMessage = t("msg_ticket_updated", { id: matchLegacy[1], name: matchLegacy[2], defaultValue: message });
         }
       } else if (type === "TICKET_ASSIGNED") {
         const matchStandard = message?.match(/^Ticket #(.+?) is now in progress and assigned to (.+?)\.$/);
@@ -383,6 +451,7 @@ const NotificationsPage = () => {
           displayMessage = t("msg_ticket_assigned", { id: matchLegacy[1], defaultValue: message });
         }
       } else if (type === "TICKET_STATUS_UPDATED") {
+        const matchIncidentCancel = message?.match(/^(.+?) cancelled an incident ticket previously assigned to (.+?) at (.+?)\.$/);
         const matchStandardStatus = message?.match(/^Ticket #(.+?) status updated to (.+?) by (.+?)\.$/);
         const matchStandardResolved = message?.match(/^Ticket #(.+?) has been resolved by (.+?)\.$/);
         const matchStandardCancel = message?.match(/^(.+?) cancelled ticket #(.+?)\.$/);
@@ -390,7 +459,14 @@ const NotificationsPage = () => {
         const matchLegacyUser = message?.match(/Ticket #(.+?) status changed to (.+?)\./);
         const matchLegacyCancel = message?.match(/(.+?) cancelled ticket #(.+?)\./);
         
-        if (matchStandardStatus) {
+        if (matchIncidentCancel) {
+          displayMessage = t("msg_incident_ticket_cancelled", {
+            userName: matchIncidentCancel[1],
+            category: getLocalizedCategory(matchIncidentCancel[2]),
+            location: getLocalizedLocation(matchIncidentCancel[3]),
+            defaultValue: message
+          });
+        } else if (matchStandardStatus) {
           const statusVal = matchStandardStatus[2];
           const statusKey = statusVal.toLowerCase().replace(" ", "_");
           displayMessage = t("msg_ticket_status_updated_standard", {

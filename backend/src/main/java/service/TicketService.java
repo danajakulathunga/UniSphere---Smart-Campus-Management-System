@@ -136,14 +136,25 @@ public class TicketService {
 
         Ticket saved = ticketRepository.save(ticket);
 
-        notificationService.createForRole(
-                Role.ADMIN,
-                "Ticket updated",
-                "Ticket #" + ticket.getId() + " was updated by " + actor.getName() + ".",
-                NotificationType.TICKET_UPDATED,
-                "TICKET",
-                ticket.getId(),
-                Set.of(actor.getId()));
+        if (actor.getRoles() != null && (actor.getRoles().contains(Role.USER) || actor.getRoles().contains(Role.LECTURER))) {
+            notificationService.createForRole(
+                    Role.ADMIN,
+                    "Incident Ticket Updated",
+                    actor.getName() + " updated an incident ticket assigned to " + ticket.getCategory() + " at " + ticket.getLocation() + ".",
+                    NotificationType.TICKET_UPDATED,
+                    "TICKET",
+                    ticket.getId(),
+                    Set.of(actor.getId()));
+        } else {
+            notificationService.createForRole(
+                    Role.ADMIN,
+                    "Ticket updated",
+                    "Ticket #" + ticket.getId() + " was updated by " + actor.getName() + ".",
+                    NotificationType.TICKET_UPDATED,
+                    "TICKET",
+                    ticket.getId(),
+                    Set.of(actor.getId()));
+        }
 
         return saved;
     }
@@ -345,14 +356,25 @@ public class TicketService {
         ticket.setUpdatedAt(LocalDateTime.now());
         ticketRepository.save(ticket);
 
-        notificationService.createForRole(
-            Role.ADMIN,
-            "Ticket cancelled",
-            user.getName() + " cancelled ticket #" + ticket.getId() + ".",
-            NotificationType.TICKET_STATUS_UPDATED,
-            "TICKET",
-            ticket.getId(),
-            Set.of(user.getId()));
+        if (user.getRoles() != null && (user.getRoles().contains(Role.USER) || user.getRoles().contains(Role.LECTURER))) {
+            notificationService.createForRole(
+                Role.ADMIN,
+                "Incident Ticket Cancelled",
+                user.getName() + " cancelled an incident ticket previously assigned to " + ticket.getCategory() + " at " + ticket.getLocation() + ".",
+                NotificationType.TICKET_STATUS_UPDATED,
+                "TICKET",
+                ticket.getId(),
+                Set.of(user.getId()));
+        } else {
+            notificationService.createForRole(
+                Role.ADMIN,
+                "Ticket cancelled",
+                user.getName() + " cancelled ticket #" + ticket.getId() + ".",
+                NotificationType.TICKET_STATUS_UPDATED,
+                "TICKET",
+                ticket.getId(),
+                Set.of(user.getId()));
+        }
     }
 
     public void deleteTicket(String ticketId, User user) {

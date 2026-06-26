@@ -152,6 +152,9 @@ const UserDashboard = () => {
   const topSessions = useMemo(() => {
     return batchSessions
       .filter((session) => {
+        // Exclude cancelled sessions
+        if (session.status === "CANCELLED") return false;
+
         try {
           let y, m, d, h = 0, min = 0;
           if (Array.isArray(session.bookingDate)) {
@@ -503,7 +506,11 @@ const UserDashboard = () => {
 
             <div className="flex-1 space-y-3">
               {myTickets.length > 0 ? myTickets.slice(0, 3).map((ticket) => (
-                <div key={ticket.id} className="group p-4 rounded-xl bg-slate-50 border border-slate-100 dark:bg-white/5 dark:border-white/5 transition-all hover:shadow-lg">
+                <div 
+                  key={ticket.id} 
+                  onClick={() => navigate(`/tickets?highlight=${ticket.id}`)}
+                  className="group p-4 rounded-xl bg-slate-50 border border-slate-100 dark:bg-white/5 dark:border-white/5 transition-all hover:shadow-lg cursor-pointer hover:border-blue-500/30"
+                >
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div>
                       <h4 className="text-sm font-black text-slate-900 dark:text-white tracking-tight mb-1">{ticket.title}</h4>

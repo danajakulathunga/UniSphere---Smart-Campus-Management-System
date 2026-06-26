@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Users,
   Search,
@@ -34,6 +34,7 @@ import {
 } from "../utils/dashboardConfig";
 import CustomDropdown from "../components/CustomDropdown";
 import Modal from "../components/Modal";
+import { generateStaffPDF } from "../utils/pdfGenerator";
 import {
   useQuery,
   useMutation,
@@ -60,6 +61,7 @@ const StaffPage = () => {
   const { showAlert } = useAlert();
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -140,13 +142,13 @@ const StaffPage = () => {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["admin-staff", searchQuery, roleFilter],
+    queryKey: ["admin-staff", searchQuery, roleFilter, highlightId],
     queryFn: async () => {
       const params = {
         search: searchQuery || "",
         roles: roleFilter === "ALL" ? "LECTURER,TECHNICIAN" : roleFilter,
         page: 0,
-        size: 100,
+        size: highlightId ? 1000 : 100,
       };
       // Using the main users endpoint to get counts and correct filtering
       const res = await api.get("/admin/users", { params });
@@ -173,10 +175,25 @@ const StaffPage = () => {
     const id = params.get("highlight");
     if (id) {
       setHighlightId(id);
+      
+      // Clean query params
+      navigate(location.pathname, { replace: true });
+
       const timer = setTimeout(() => setHighlightId(null), 5000);
       return () => clearTimeout(timer);
     }
-  }, [location.search]);
+  }, [location.search, navigate, location.pathname]);
+
+  // Reset filter & search query if highlighted staff is not in list
+  useEffect(() => {
+    if (highlightId && responseData) {
+      const hasIt = staffData.some((u) => String(u.id) === String(highlightId));
+      if (!hasIt && (roleFilter !== "ALL" || searchQuery)) {
+        setRoleFilter("ALL");
+        setSearchQuery("");
+      }
+    }
+  }, [highlightId, staffData, responseData, roleFilter, searchQuery, setSearchQuery]);
 
   useEffect(() => {
     if (highlightId && highlightedRowRef.current) {
@@ -420,15 +437,15 @@ const StaffPage = () => {
               {staffData.map((u) => (
                 <tr
                   key={u.id}
-                  ref={u.id === highlightId ? highlightedRowRef : null}
-                  className={`group transition-all duration-500 relative hover:scale-[1.005] ${
-                    u.id === highlightId 
-                      ? "bg-indigo-50/80 dark:bg-indigo-500/10 scale-[1.01] shadow-lg shadow-indigo-500/10 z-10" 
+                  ref={String(u.id) === String(highlightId) ? highlightedRowRef : null}
+                  className={`group transition-all duration-700 relative hover:scale-[1.005] ${
+                    String(u.id) === String(highlightId)
+                      ? "bg-blue-50/80 dark:bg-blue-500/10 shadow-2xl shadow-blue-500/20 z-10 scale-[1.01]"
                       : "bg-white dark:bg-slate-900/50"
                   }`}
                 >
                   <td className={`px-4 py-3 rounded-l-xl border-y border-l transition-all duration-500 ${
-                    u.id === highlightId ? "border-indigo-500" : "border-slate-100 dark:border-white/5 group-hover:border-indigo-500"
+                    String(u.id) === String(highlightId) ? "border-blue-500" : "border-slate-100 dark:border-white/5 group-hover:border-blue-500"
                   }`}>
                     <div className="flex items-center gap-3">
                       {u.profilePicture ? (
@@ -453,14 +470,14 @@ const StaffPage = () => {
                     </div>
                   </td>
                   <td className={`px-4 py-3 border-y transition-all duration-500 ${
-                    u.id === highlightId ? "border-indigo-500" : "border-slate-100 dark:border-white/5 group-hover:border-indigo-500"
+                    String(u.id) === String(highlightId) ? "border-blue-500" : "border-slate-100 dark:border-white/5 group-hover:border-blue-500"
                   }`}>
                     <span className="inline-flex items-center px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-white/5 text-[9px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10">
                       {u.roles.map((r) => r === "USER" ? t("student") : t(`role_${r.toLowerCase()}`, { defaultValue: r })).join(" / ")}
                     </span>
                   </td>
                   <td className={`px-4 py-3 border-y transition-all duration-500 ${
-                    u.id === highlightId ? "border-indigo-500" : "border-slate-100 dark:border-white/5 group-hover:border-indigo-500"
+                    String(u.id) === String(highlightId) ? "border-blue-500" : "border-slate-100 dark:border-white/5 group-hover:border-blue-500"
                   }`}>
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${u.enabled ? statusStyles.ACTIVE : statusStyles.DISABLED}`}
@@ -469,14 +486,14 @@ const StaffPage = () => {
                     </span>
                   </td>
                   <td className={`px-4 py-3 border-y transition-all duration-500 ${
-                    u.id === highlightId ? "border-indigo-500" : "border-slate-100 dark:border-white/5 group-hover:border-indigo-500"
+                    String(u.id) === String(highlightId) ? "border-blue-500" : "border-slate-100 dark:border-white/5 group-hover:border-blue-500"
                   }`}>
                     <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
                       {formatDate(u.createdAt, dateLocale)}
                     </span>
                   </td>
                   <td className={`px-4 py-3 rounded-r-xl border-y border-r transition-all duration-500 relative w-[270px] min-w-[270px] ${
-                    u.id === highlightId ? "border-indigo-500" : "border-slate-100 dark:border-white/5 group-hover:border-indigo-500"
+                    String(u.id) === String(highlightId) ? "border-blue-500" : "border-slate-100 dark:border-white/5 group-hover:border-blue-500"
                   }`}>
                     <div className="flex items-center justify-center gap-1 text-slate-400 group-hover:opacity-0 transition-opacity duration-300">
                       <span className="text-[9px] font-black uppercase tracking-widest">

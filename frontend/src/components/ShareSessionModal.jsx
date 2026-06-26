@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   GraduationCap, 
   FileUp, 
@@ -9,10 +9,11 @@ import {
   Clock, 
   Info,
   Send,
-  Loader2
+  Loader2,
+  ChevronDown,
+  Check
 } from "lucide-react";
 import Modal from "./Modal";
-import CustomDropdown from "./CustomDropdown";
 import RichTextEditor from "./RichTextEditor";
 import api from "../services/api";
 import { useAlert } from "../context/AlertContext";
@@ -44,19 +45,37 @@ const ShareSessionModal = ({ isOpen, onClose, booking, onSuccess }) => {
   const { user } = useAuth();
   const { showAlert } = useAlert();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [batchDropdownOpen, setBatchDropdownOpen] = useState(false);
+  const batchDropdownRef = useRef(null);
+
   const [formData, setFormData] = useState({
-    assignedBatch: "",
+    assignedBatches: [], // array of selected batch tags
     lectureMaterials: [],
     sessionDetails: ""
   });
 
+  // Close batch dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (batchDropdownRef.current && !batchDropdownRef.current.contains(e.target)) {
+        setBatchDropdownOpen(false);
+      }
+    };
+    if (batchDropdownOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [batchDropdownOpen]);
+
   useEffect(() => {
     if (isOpen && booking) {
       setFormData({
-        assignedBatch: booking.assignedBatch || "",
+        // Parse existing comma-separated assignedBatch back into array
+        assignedBatches: booking.assignedBatch
+          ? booking.assignedBatch.split(",").map(b => b.trim()).filter(Boolean)
+          : [],
         lectureMaterials: booking.lectureMaterials || [],
         sessionDetails: booking.sessionDetails || ""
       });
+      setBatchDropdownOpen(false);
     }
   }, [isOpen, booking]);
 
@@ -122,28 +141,47 @@ const ShareSessionModal = ({ isOpen, onClose, booking, onSuccess }) => {
     return user.batches.split(",").map(b => ({
       value: b.trim(),
       label: b.trim()
+    })).filter(b => b.value);
+  };
+
+  const toggleBatch = (batchValue) => {
+    setFormData(prev => ({
+      ...prev,
+      assignedBatches: prev.assignedBatches.includes(batchValue)
+        ? prev.assignedBatches.filter(b => b !== batchValue)
+        : [...prev.assignedBatches, batchValue]
     }));
   };
 
+  const removeBatch = (batchValue) => {
+    setFormData(prev => ({
+      ...prev,
+      assignedBatches: prev.assignedBatches.filter(b => b !== batchValue)
+    }));
+  };
+
+  const clearAllBatches = () => {
+    setFormData(prev => ({ ...prev, assignedBatches: [] }));
+  };
+
   const handleSubmit = async () => {
-    if (!formData.assignedBatch) {
-      showAlert("error", t("err_select_batch_first", { defaultValue: "Please select a student batch first." }));
+    if (formData.assignedBatches.length === 0) {
+      showAlert("error", t("err_select_batch_first", { defaultValue: "Please select at least one student batch." }));
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // We use the same update endpoint but only sending the share-related fields
+      const assignedBatch = formData.assignedBatches.join(",");
       const payload = {
         ...booking,
-        assignedBatch: formData.assignedBatch,
+        assignedBatch,
         lectureMaterials: formData.lectureMaterials,
         sessionDetails: formData.sessionDetails
       };
 
       await api.put(`/bookings/${booking.id}`, payload);
-      console.log("Session shared successfully:", payload);
-      showAlert("success", t("success_session_shared", { defaultValue: "Session successfully shared with {{batch}} students!", batch: formData.assignedBatch }));
+      showAlert("success", t("success_session_shared", { defaultValue: "Session successfully shared with {{batch}} students!", batch: assignedBatch }));
       onSuccess();
       onClose();
     } catch (err) {
@@ -228,15 +266,81 @@ const ShareSessionModal = ({ isOpen, onClose, booking, onSuccess }) => {
 
         {/* Share Controls */}
         <div className="space-y-4">
+          {/* Multi-batch selector */}
           <div className="space-y-2">
-            <CustomDropdown
-              label={t("assign_student_batch", { defaultValue: "Assign to Student Batch" })}
-              icon={GraduationCap}
-              options={getBatchOptions()}
-              value={formData.assignedBatch}
-              onChange={(val) => setFormData(prev => ({ ...prev, assignedBatch: val }))}
-              placeholder={t("select_batch_placeholder", { defaultValue: "Select a batch to notify (e.g. Y3S2)" })}
-            />
+            <label className="text-[11px] font-black uppercase tracking-widest text-blue-600/80 ml-1 block">
+              {t("assign_student_batch", { defaultValue: "Assign to Student Batch" })}
+            </label>
+
+            <div className="relative" ref={batchDropdownRef}>
+              {/* Trigger button */}
+              <button
+                type="button"
+                onClick={() => setBatchDropdownOpen(prev => !prev)}
+                disabled={isCancelled}
+                className="w-full flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-left hover:border-blue-400 transition-colors dark:bg-white/5 dark:border-white/10 disabled:opacity-50"
+              >
+                <GraduationCap className="h-4 w-4 text-blue-500 shrink-0" />
+                <span className="flex-1 text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  {formData.assignedBatches.length === 0
+                    ? t("select_batches_placeholder", { defaultValue: "Select one or more batches…" })
+                    : t("batches_selected", { count: formData.assignedBatches.length, defaultValue: "{{count}} batch(es) selected" })}
+                </span>
+                <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${batchDropdownOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {/* Dropdown options */}
+              {batchDropdownOpen && getBatchOptions().length > 0 && (
+                <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden">
+                  {getBatchOptions().map(opt => {
+                    const isSelected = formData.assignedBatches.includes(opt.value);
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => toggleBatch(opt.value)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-blue-50/60 dark:hover:bg-white/5 transition-colors text-left"
+                      >
+                        <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-blue-600 border-blue-600" : "border-slate-300 dark:border-white/20"}`}>
+                          {isSelected && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {batchDropdownOpen && getBatchOptions().length === 0 && (
+                <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl px-4 py-3">
+                  <span className="text-[11px] font-bold text-slate-400 italic">{t("no_batches_available", { defaultValue: "No batches assigned to your profile." })}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Selected batch chips */}
+            {formData.assignedBatches.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {formData.assignedBatches.map(batch => (
+                  <span
+                    key={batch}
+                    className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-500/20"
+                  >
+                    {batch}
+                    <button type="button" onClick={() => removeBatch(batch)} className="ml-0.5 rounded hover:text-rose-500 transition-colors">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                <button
+                  type="button"
+                  onClick={clearAllBatches}
+                  className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors"
+                >
+                  {t("clear_all", { defaultValue: "Clear All" })}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

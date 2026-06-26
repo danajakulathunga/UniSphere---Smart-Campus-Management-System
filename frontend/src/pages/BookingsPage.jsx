@@ -58,7 +58,7 @@ const statusStyles = {
 
 const BookingsPage = () => {
   const { user, logout } = useAuth();
-  const { searchQuery } = useSearch();
+  const { searchQuery, setSearchQuery } = useSearch();
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language === "si" ? "si-LK" : i18n.language === "ta" ? "ta-LK" : "en-US";
   const roles = normalizeRoles(user?.roles);
@@ -133,12 +133,12 @@ const BookingsPage = () => {
     isLoading: isBookingsLoading,
     isError: hasError,
   } = useQuery({
-    queryKey: ["bookings", isAdmin, filters.status, filters.date, searchQuery],
+    queryKey: ["bookings", isAdmin, filters.status, filters.date, searchQuery, highlightId],
     queryFn: async () => {
       const endpoint = isAdmin ? "/bookings" : "/bookings/mine";
       const params = {
         page: 0,
-        size: 50,
+        size: highlightId ? 1000 : 50,
         status: filters.status || undefined,
         date: filters.date || undefined,
         search: searchQuery || undefined,
@@ -168,19 +168,16 @@ const BookingsPage = () => {
 
   const sortedBookings = useMemo(() => {
     return [...bookings].sort((a, b) => {
-      const getTs = (bk) => {
+      // Sort by createdAt DESC — newest record always appears first
+      const parseCreatedAt = (v) => {
+        if (!v) return 0;
         try {
-          let y, m, d, h, min;
-          if (Array.isArray(bk.bookingDate)) [y, m, d] = bk.bookingDate;
-          else [y, m, d] = bk.bookingDate.split("-").map(Number);
-          if (Array.isArray(bk.startTime)) [h, min] = bk.startTime;
-          else [h, min] = bk.startTime.split(":").map(Number);
-          return new Date(y, m - 1, d, h, min).getTime();
-        } catch (e) {
-          return 0;
-        }
+          // Spring Boot serializes LocalDateTime as [year, month, day, hour, min, sec, ns]
+          if (Array.isArray(v)) return new Date(v[0], v[1] - 1, v[2], v[3] || 0, v[4] || 0, v[5] || 0).getTime();
+          return new Date(v).getTime();
+        } catch { return 0; }
       };
-      return getTs(b) - getTs(a);
+      return parseCreatedAt(b.createdAt) - parseCreatedAt(a.createdAt);
     });
   }, [bookings]);
 
@@ -290,10 +287,21 @@ const BookingsPage = () => {
 
       const timer = setTimeout(() => {
         setHighlightId(null);
-      }, 4000);
+      }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [location.search]);
+  }, [location.search, navigate, location.pathname]);
+
+  // Reset active status & date filters and search query if highlighted booking is not found in the list
+  useEffect(() => {
+    if (highlightId && bookings.length > 0) {
+      const hasIt = bookings.some((b) => String(b.id) === String(highlightId));
+      if (!hasIt && (filters.status !== "" || filters.date !== "" || searchQuery)) {
+        setFilters({ status: "", date: "" });
+        setSearchQuery("");
+      }
+    }
+  }, [highlightId, bookings, filters, searchQuery, setSearchQuery]);
 
   useEffect(() => {
     if (highlightId && highlightedRowRef.current) {
@@ -400,8 +408,8 @@ const BookingsPage = () => {
             </button>
             {isAdmin && (
               <button
-                onClick={() => generateBookingPDF(bookings)}
-                disabled={bookings.length === 0}
+                onClick={() => generateBookingPDF(sortedBookings)}
+                disabled={sortedBookings.length === 0}
                 className="inline-flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-white/5 border-2 border-transparent px-4 py-2 text-[13px] font-bold text-slate-600 dark:text-slate-400 transition-all hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white shadow-sm active:scale-95 disabled:opacity-50"
               >
                 <ClipboardList className="h-4 w-4" />
@@ -490,10 +498,10 @@ const BookingsPage = () => {
                   <tr
                     key={booking.id}
                     ref={isHighlighted ? highlightedRowRef : null}
-                    className={`group transition-all duration-500 relative bg-white dark:bg-slate-900/50 ${
+                    className={`group transition-all duration-700 relative hover:scale-[1.005] ${
                       isHighlighted
-                        ? "z-20 scale-[1.01]"
-                        : "hover:z-10 hover:scale-[1.005]"
+                        ? "bg-blue-50/80 dark:bg-blue-500/10 shadow-2xl shadow-blue-500/20 z-10 scale-[1.01]"
+                        : "bg-white dark:bg-slate-900/50"
                     }`}
                   >
                     <td
@@ -667,7 +675,7 @@ const BookingsPage = () => {
                               }}
                               className={`table-action-btn text-[9px] font-black uppercase tracking-widest ${
                                 !isEditable
-                                  ? "bg-slate-100 text-slate-300 cursor-not-allowed opacity-50"
+                                  ? "bg-slate-100 text-slate-300 dark:bg-white/5 dark:text-slate-600 cursor-not-allowed opacity-50"
                                   : "bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white dark:bg-white/5 dark:text-slate-400 dark:hover:bg-blue-600 dark:hover:text-white"
                               }`}
                             >
@@ -681,7 +689,7 @@ const BookingsPage = () => {
                               onClick={() => cancelBooking(booking.id)}
                               className={`table-action-btn text-[9px] font-black uppercase tracking-widest ${
                                 !isCancellable
-                                  ? "bg-rose-50 text-rose-300 cursor-not-allowed opacity-50"
+                                  ? "bg-rose-50 text-rose-300 dark:bg-rose-950/20 dark:text-rose-900/50 cursor-not-allowed opacity-50"
                                   : "bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white"
                               }`}
                             >

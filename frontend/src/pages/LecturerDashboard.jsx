@@ -476,7 +476,11 @@ const LecturerDashboard = () => {
             <div className="flex-1 space-y-3">
               {myTickets.filter(t => t.status !== "RESOLVED" && t.status !== "CANCELLED").length > 0 ? 
                 myTickets.filter(t => t.status !== "RESOLVED" && t.status !== "CANCELLED").slice(0, 3).map((ticket) => (
-                <div key={ticket.id} className="group p-3 rounded-xl bg-slate-50 border border-slate-100 dark:bg-white/5 dark:border-white/5 transition-all hover:shadow-lg">
+                <div 
+                  key={ticket.id} 
+                  onClick={() => navigate(`/tickets?highlight=${ticket.id}`)}
+                  className="group p-3 rounded-xl bg-slate-50 border border-slate-100 dark:bg-white/5 dark:border-white/5 transition-all hover:shadow-lg cursor-pointer hover:border-purple-500/30"
+                >
                   <div className="flex items-start justify-between gap-4 mb-2">
                     <div>
                       <h4 className="text-xs font-black text-slate-900 dark:text-white tracking-tight mb-1">{ticket.title}</h4>

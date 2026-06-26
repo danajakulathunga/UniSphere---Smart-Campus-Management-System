@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Building2,
   Layers3,
@@ -62,7 +62,8 @@ const getResourceIcon = (type = "") => {
 
 const ResourcesPage = () => {
   const { user, logout } = useAuth();
-  const { searchQuery } = useSearch();
+  const { searchQuery, setSearchQuery } = useSearch();
+  const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language === "si" ? "si-LK" : i18n.language === "ta" ? "ta-LK" : "en-US";
   const roles = normalizeRoles(user?.roles);
@@ -287,20 +288,53 @@ const ResourcesPage = () => {
 
   // Effect to reset limit when filters or search change
   useEffect(() => {
-    setLimit(9);
-  }, [filters, searchQuery]);
+    if (!highlightId) {
+      setLimit(9);
+    }
+  }, [filters, searchQuery, highlightId]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const id = params.get("highlight");
     if (id) {
       setHighlightId(id);
+      navigate(location.pathname, { replace: true });
       const timer = setTimeout(() => {
         setHighlightId(null);
-      }, 4000);
+      }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [location.search]);
+  }, [location.search, navigate, location.pathname]);
+
+  // Reset search query and filters if the highlighted record is not found in the filtered list
+  useEffect(() => {
+    if (highlightId && resourcesData) {
+      const hasIt = resources.some((r) => String(r.id) === String(highlightId));
+      if (!hasIt) {
+        if (searchQuery) {
+          setSearchQuery("");
+        }
+        if (filters.type !== "" || filters.capacity !== "" || filters.location !== "") {
+          setFilters({
+            type: "",
+            capacity: "",
+            location: "",
+          });
+        }
+      }
+    }
+  }, [highlightId, resources, resourcesData, searchQuery, setSearchQuery, filters]);
+
+  // If highlightId is present and the resource is in the list but beyond the current limit,
+  // we increase the limit to render it.
+  useEffect(() => {
+    if (highlightId && resources.length > 0) {
+      const index = resources.findIndex((r) => String(r.id) === String(highlightId));
+      if (index !== -1 && index >= limit) {
+        setLimit(index + 1);
+      }
+    }
+  }, [highlightId, resources, limit]);
 
   useEffect(() => {
     if (highlightId && highlightedRef.current) {
@@ -565,7 +599,7 @@ const ResourcesPage = () => {
                 ref={highlightId === resource.id ? highlightedRef : null}
                 className={`group animate-reveal overflow-hidden rounded-xl border transition-all duration-500 ${
                   highlightId === resource.id
-                    ? "border-blue-500 shadow-2xl shadow-blue-500/20 ring-4 ring-blue-500/10 scale-[1.02] z-10 bg-blue-50/50 dark:bg-blue-900/20"
+                    ? "border-blue-500 shadow-2xl shadow-blue-500/20 z-10 scale-[1.01] bg-blue-50/80 dark:bg-blue-500/10"
                     : "border-slate-200 bg-white shadow-sm hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-blue-900/5 dark:border-white/5 dark:bg-slate-900/50"
                 }`}
               >

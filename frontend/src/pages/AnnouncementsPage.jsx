@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   BellRing,
   Plus,
@@ -47,7 +47,8 @@ const typeIcons = {
 
 const AnnouncementsPage = () => {
   const { user, logout } = useAuth();
-  const { searchQuery } = useSearch();
+  const { searchQuery, setSearchQuery } = useSearch();
+  const navigate = useNavigate();
   const { showAlert } = useAlert();
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language?.startsWith("si") ? "si-LK" : i18n.language?.startsWith("ta") ? "ta-LK" : "en-US";
@@ -100,6 +101,29 @@ const AnnouncementsPage = () => {
     enabled: !!user,
   });
 
+  const filteredAnnouncements = useMemo(() => {
+    let result = announcements;
+
+    if (filterType) {
+      result = result.filter((a) => a.type === filterType);
+    }
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (a) =>
+          a.title.toLowerCase().includes(q) ||
+          a.message
+            .toLowerCase()
+            .replace(/<[^>]*>/g, "")
+            .includes(q) ||
+          a.postedBy.toLowerCase().includes(q),
+      );
+    }
+
+    return result;
+  }, [announcements, filterType, searchQuery]);
+
   // Automatically mark unread visible announcements as read
   useEffect(() => {
     if (announcements && announcements.length > 0 && user) {
@@ -126,12 +150,26 @@ const AnnouncementsPage = () => {
     const id = params.get("highlight");
     if (id) {
       setHighlightId(id);
+      navigate(location.pathname, { replace: true });
       const timer = setTimeout(() => {
         setHighlightId(null);
-      }, 4000);
+      }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [location.search]);
+  }, [location.search, navigate, location.pathname]);
+
+  // Reset local filters if the highlighted announcement is not in the filtered list
+  useEffect(() => {
+    if (highlightId && announcements.length > 0) {
+      const hasIt = filteredAnnouncements.some((a) => String(a.id) === String(highlightId));
+      if (!hasIt) {
+        if (searchQuery) {
+          setSearchQuery("");
+        }
+        setFilterType("");
+      }
+    }
+  }, [highlightId, announcements, filteredAnnouncements, searchQuery, setSearchQuery]);
 
   useEffect(() => {
     if (highlightId && highlightedRef.current) {
@@ -140,7 +178,7 @@ const AnnouncementsPage = () => {
         block: "center",
       });
     }
-  }, [highlightId, announcements]);
+  }, [highlightId, filteredAnnouncements, announcements]);
 
   const createMutation = useMutation({
     mutationFn: async (newNotice) => {
@@ -265,29 +303,6 @@ const AnnouncementsPage = () => {
     return counts;
   }, [announcements]);
 
-  const filteredAnnouncements = useMemo(() => {
-    let result = announcements;
-
-    if (filterType) {
-      result = result.filter((a) => a.type === filterType);
-    }
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (a) =>
-          a.title.toLowerCase().includes(q) ||
-          a.message
-            .toLowerCase()
-            .replace(/<[^>]*>/g, "")
-            .includes(q) ||
-          a.postedBy.toLowerCase().includes(q),
-      );
-    }
-
-    return result;
-  }, [announcements, filterType, searchQuery]);
-
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     try {
@@ -392,7 +407,7 @@ const AnnouncementsPage = () => {
                   ref={highlightId === notice.id ? highlightedRef : null}
                   className={`rounded-xl border p-6 shadow-sm flex flex-col justify-between hover:scale-[1.01] transition-all duration-500 relative group ${
                     highlightId === notice.id
-                      ? "border-blue-500 ring-4 ring-blue-500/20 shadow-2xl scale-[1.02] bg-blue-50/50 dark:bg-blue-900/20 z-10"
+                      ? "border-blue-500 shadow-2xl shadow-blue-500/20 z-10 scale-[1.01] bg-blue-50/80 dark:bg-blue-500/10"
                       : "border-slate-200 bg-white dark:border-white/5 dark:bg-slate-900/50"
                   }`}
                 >
